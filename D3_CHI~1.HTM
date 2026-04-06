@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chicago-Area D3 Baseball Finder</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2744; --navy-light: #243360; --red: #c8102e;
+    --gold: #f5a623; --gray-50: #f8f9fa; --gray-100: #f0f2f5;
+    --gray-200: #e4e8ed; --gray-400: #9aa5b4; --gray-600: #4a5568;
+    --gray-800: #1a202c; --green: #276749; --green-light: #e6f4ec;
+    --blue-light: #ebf4ff; --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,.10); --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-100); color: var(--gray-800); min-height: 100vh; }
+  .header { background: var(--navy); color: #fff; padding: 20px 24px 18px; text-align: center; }
+  .header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -.3px; }
+  .header p { font-size: .85rem; color: rgba(255,255,255,.65); margin-top: 4px; }
+  .badge { display: inline-block; background: var(--red); color: #fff; font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: .5px; margin-bottom: 8px; text-transform: uppercase; }
+  .progress-bar { background: var(--navy-light); height: 4px; }
+  .progress-fill { height: 100%; background: var(--gold); transition: width .35s ease; }
+  .container { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  .step-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .step-label { font-size: .75rem; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+  .step-question { font-size: 1.2rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; line-height: 1.35; }
+  .step-hint { font-size: .82rem; color: var(--gray-400); margin-bottom: 20px; }
+  .options { display: grid; gap: 10px; }
+  .options.two-col { grid-template-columns: 1fr 1fr; }
+  .option-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid var(--gray-200); border-radius: 10px; background: #fff; cursor: pointer; text-align: left; transition: all .15s ease; font-size: .93rem; font-weight: 500; color: var(--gray-800); width: 100%; }
+  .option-btn:hover { border-color: var(--navy); background: var(--blue-light); }
+  .option-btn.selected { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .option-btn .icon { font-size: 1.3rem; flex-shrink: 0; width: 28px; text-align: center; }
+  .option-btn .label { flex: 1; }
+  .option-btn .sublabel { font-size: .76rem; opacity: .65; margin-top: 1px; font-weight: 400; }
+  .nav-row { display: flex; gap: 10px; margin-top: 24px; }
+  .btn { flex: 1; padding: 13px; border-radius: 10px; border: none; cursor: pointer; font-size: .95rem; font-weight: 600; transition: all .15s ease; }
+  .btn-back { background: var(--gray-100); color: var(--gray-600); flex: 0 0 auto; width: 90px; }
+  .btn-back:hover { background: var(--gray-200); }
+  .btn-next { background: var(--navy); color: #fff; }
+  .btn-next:hover { background: var(--navy-light); }
+  .btn-next:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+  .results-header { text-align: center; margin-bottom: 20px; }
+  .results-header h2 { font-size: 1.4rem; font-weight: 700; color: var(--navy); }
+  .results-header p { font-size: .85rem; color: var(--gray-400); margin-top: 4px; }
+  .school-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 14px; overflow: hidden; border: 2px solid transparent; }
+  .school-card.top-match { border-color: var(--navy); }
+  .top-banner { background: var(--navy); color: #fff; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; padding: 5px 18px; }
+  .school-card-header { padding: 16px 18px 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .school-name { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+  .school-meta { font-size: .78rem; color: var(--gray-400); margin-top: 3px; }
+  .match-score { flex-shrink: 0; text-align: center; background: var(--navy); color: #fff; border-radius: 8px; padding: 6px 12px; min-width: 54px; }
+  .top-match .match-score { background: var(--red); }
+  .match-score .num { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+  .match-score .lbl { font-size: .62rem; opacity: .7; text-transform: uppercase; letter-spacing: .5px; }
+  .school-stats { border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100); }
+  .stat-row { display: grid; grid-template-columns: 62px 1fr 1fr 1fr; align-items: stretch; }
+  .stat-row + .stat-row { border-top: 1px solid var(--gray-100); background: var(--gray-50); }
+  .stat-row-label { display: flex; align-items: center; justify-content: center; padding: 10px 8px; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: #fff; background: var(--navy); border-right: 1px solid rgba(255,255,255,.15); text-align: center; line-height: 1.3; }
+  .stat-row + .stat-row .stat-row-label { background: var(--navy-light); }
+  .stat-cell { padding: 10px 12px; text-align: center; border-right: 1px solid var(--gray-100); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-val { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+  .stat-lbl { font-size: .68rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: .4px; margin-top: 1px; }
+  /* Collapsible details section */
+  .card-details { border-top: 1px solid var(--gray-100); }
+  .card-details summary { list-style: none; padding: 9px 18px; font-size: .78rem; font-weight: 600; color: var(--gray-400); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+  .card-details summary::-webkit-details-marker { display: none; }
+  .card-details summary::after { content: "›"; font-size: 1rem; transition: transform .2s; margin-left: auto; }
+  .card-details[open] summary::after { transform: rotate(90deg); }
+  .card-details summary:hover { color: var(--navy); }
+  .size-row { padding: 6px 18px 10px; font-size: .78rem; color: var(--gray-600); }
+  .size-row strong { color: var(--navy); }
+  .size-vs { color: var(--gray-400); margin-left: 4px; }
+  .school-tags { padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: .7rem; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
+  .tag-match { background: var(--navy); color: #fff; }
+  .tag-dim { background: var(--gray-100); color: var(--gray-400); border: 1px solid var(--gray-200); font-weight: 500; }
+  .tag-info { background: var(--gray-100); color: var(--gray-600); }
+  .tag-opportunity { background: var(--green-light); color: var(--green); }
+  .tag-caution { background: #fff3e0; color: #e65100; }
+  .depth-row { padding: 0 18px 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .depth-chip { font-size: .75rem; color: var(--gray-600); background: var(--gray-50); border: 1px solid var(--gray-200); padding: 4px 10px; border-radius: 6px; }
+  .depth-chip strong { color: var(--navy); }
+  .depth-note { font-size: .67rem; color: var(--gray-400); padding: 2px 18px 12px; font-style: italic; }
+  .school-footer { padding: 10px 18px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .roster-link { font-size: .8rem; color: var(--red); text-decoration: none; font-weight: 600; }
+  .roster-link:hover { text-decoration: underline; }
+  .drive-badge { font-size: .75rem; color: var(--gray-400); }
+  /* Bottom action row */
+  .action-row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .btn-restart { background: none; border: 2px solid var(--gray-200); color: var(--gray-600); padding: 10px 22px; border-radius: 10px; cursor: pointer; font-size: .88rem; font-weight: 600; transition: all .15s; }
+  .btn-restart:hover { border-color: var(--navy); color: var(--navy); }
+  .btn-share { background: var(--navy); color: #fff; border: 2px solid var(--navy); padding: 10px 22px; border-radius: 10px; cursor: pointer; font-size: .88rem; font-weight: 600; transition: all .15s; }
+  .btn-share:hover { background: var(--navy-light); border-color: var(--navy-light); }
+  .btn-share.copied { background: var(--green); border-color: var(--green); }
+  /* How do I fit */
+  .fit-section { padding: 10px 18px 12px; border-top: 1px solid var(--gray-100); }
+  .fit-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--red); margin-bottom: 5px; }
+  .fit-text { font-size: .82rem; color: var(--gray-600); line-height: 1.55; }
+  /* Coach row */
+  .coach-row { padding: 10px 18px 12px; border-top: 1px solid var(--gray-100); display: flex; align-items: center; gap: 10px; }
+  .coach-info { flex: 1; min-width: 0; }
+  .coach-name { font-size: .83rem; font-weight: 600; color: var(--navy); }
+  .coach-sub { font-size: .72rem; color: var(--gray-400); margin-top: 1px; }
+  .coach-contact { font-size: .78rem; color: var(--red); text-decoration: none; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .coach-contact:hover { text-decoration: underline; }
+  /* Academic collapsible */
+  .acad-grid { display: grid; grid-template-columns: repeat(3,1fr); padding: 8px 18px 2px; gap: 4px; }
+  .acad-cell { text-align: center; padding: 8px 4px; }
+  .acad-val { font-size: 1rem; font-weight: 700; color: var(--navy); }
+  .acad-lbl { font-size: .66rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+  .acad-fit { padding: 4px 18px 12px; font-size: .8rem; color: var(--gray-600); line-height: 1.55; }
+  .acad-fit strong { color: var(--navy); }
+  .acad-fit em { color: var(--gray-400); }
+  .header-disclaimer { font-size: .75rem; color: rgba(255,255,255,.45); margin-top: 6px; line-height: 1.5; }
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    .options.two-col { grid-template-columns: 1fr; }
+    .container { padding: 14px 12px 40px; }
+    .step-card { padding: 20px 16px; }
+    .step-question { font-size: 1.08rem; }
+    .option-btn { min-height: 54px; padding: 12px 14px; font-size: .9rem; }
+    .btn { min-height: 48px; font-size: .92rem; }
+    .btn-back { width: 76px; }
+    .header h1 { font-size: 1.25rem; }
+    .header p { font-size: .8rem; }
+    .school-card-header { padding: 13px 14px 10px; gap: 8px; }
+    .school-name { font-size: .97rem; }
+    .school-meta { font-size: .74rem; }
+    .match-score { min-width: 46px; padding: 5px 9px; }
+    .match-score .num { font-size: 1.25rem; }
+    .stat-row { grid-template-columns: 52px 1fr 1fr 1fr; }
+    .stat-row-label { font-size: .55rem; padding: 8px 4px; }
+    .stat-cell { padding: 8px 6px; }
+    .stat-val { font-size: .95rem; }
+    .stat-lbl { font-size: .63rem; }
+    .fit-section { padding: 9px 14px 10px; }
+    .fit-text { font-size: .8rem; }
+    .card-details summary { padding: 9px 14px; font-size: .76rem; }
+    .size-row { padding: 6px 14px 10px; font-size: .75rem; }
+    .school-tags { padding: 10px 14px; gap: 5px; }
+    .tag { font-size: .67rem; padding: 3px 8px; }
+    .depth-row { padding: 0 14px 4px; }
+    .depth-note { padding: 2px 14px 10px; }
+    .acad-grid { padding: 8px 14px 2px; }
+    .acad-fit { padding: 4px 14px 10px; font-size: .77rem; }
+    .coach-row { padding: 9px 14px 10px; }
+    .school-footer { padding: 9px 14px 12px; }
+    .roster-link { font-size: .78rem; }
+    .drive-badge { font-size: .72rem; }
+    .action-row { flex-direction: column; gap: 8px; }
+    .btn-restart, .btn-share { width: 100%; padding: 13px 22px; }
+    .results-header h2 { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">D3 Baseball</div>
+  <h1>Chicago-Area School Finder</h1>
+  <p>20 D3 programs &middot; CCIW, NACC, MWC, UAA &amp; MIAA &middot; Naperville-based drives</p>
+  <p class="header-disclaimer">Roster &amp; stats from 2025 season &middot; Academic data from public admissions records &middot; 0 at a position may indicate incomplete roster data</p>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="pf" style="width:0%"></div></div>
+<div class="container" id="app"></div>
+
+<script>
+// ── SCHOOL DATA ──────────────────────────────────────────────────
+var SCHOOLS = [
+  {
+    school:"North Central College", city:"Naperville, IL", conf:"CCIW",
+    drive:5, url:"https://northcentralcardinals.com/sports/baseball/roster",
+    tags:["balanced-speed","contact-hitting","above-avg-height-staff","solid-strikeout-staff",
+          "average-pitching","balanced-pitching-mix","lefty-hitter-rich","transfer-heavy-roster",
+          "crowded-catcher","corner-inf-opportunity"],
+    avg:.302, sb:67, hr:25, era:6.00, so:277, bb:172,
+    total:40, avgPHt:"6-1", p62:7, lhp:6, rhp:14, pitchers:20,
+    lhpPct:.30, leftyBat:.45, xfer:.225,
+    pos:{C:5,CI:0,MI:6,OF:6,P:20,UTL:3},
+    size:{C:{h:71,w:189},CI:{h:null,w:null},MI:{h:72.2,w:185},OF:{h:72.3,w:191.7},P:{h:72.5,w:185.5},UTL:{h:68.7,w:168.3}},
+    coach:{name:"Ed Mathey",title:"Head Coach",email:null,coachUrl:"https://northcentralcardinals.com/sports/baseball/coaches"},
+    acad:{gpa:"3.57",act:"23–27",accept:"57%",level:"moderate"}
+  },
+  {
+    school:"Wheaton College", city:"Wheaton, IL", conf:"CCIW",
+    drive:15, url:"https://athletics.wheaton.edu/sports/baseball/roster",
+    tags:["balanced-speed","developing-offense","above-avg-height-staff","strikeout-staff",
+          "average-pitching","rhp-dominant-staff","homegrown-roster","corner-inf-opportunity",
+          "crowded-middle-inf","outfield-opportunity","small-roster-high-opportunity","academically-selective"],
+    avg:.257, sb:52, hr:13, era:5.70, so:301, bb:145,
+    total:41, avgPHt:"6-1", p62:6, lhp:2, rhp:9, pitchers:18,
+    lhpPct:.111, leftyBat:.267, xfer:0,
+    pos:{C:4,CI:0,MI:14,OF:4,P:18,UTL:1},
+    size:{C:{h:72,w:181.2},CI:{h:null,w:null},MI:{h:71.7,w:192},OF:{h:69,w:179.2},P:{h:73.2,w:188.2},UTL:{h:70,w:185}},
+    coach:{name:"Matt Husted",title:"Head Coach",email:"matt.husted@wheaton.edu",coachUrl:"https://athletics.wheaton.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.73",act:"27–32",accept:"87%",level:"selective"}
+  },
+  {
+    school:"Elmhurst University", city:"Elmhurst, IL", conf:"CCIW",
+    drive:20, url:"https://elmhurstbluejays.com/sports/baseball/roster",
+    tags:["station-to-station","developing-offense","shorter-pitching-staff","hitter-friendly-ERA",
+          "lhp-heavy-staff","homegrown-roster","crowded-catcher","corner-inf-opportunity",
+          "middle-inf-opportunity"],
+    avg:.258, sb:45, hr:29, era:7.38, so:218, bb:169,
+    total:41, avgPHt:"6-0", p62:3, lhp:6, rhp:10, pitchers:16,
+    lhpPct:.375, leftyBat:.28, xfer:0,
+    pos:{C:7,CI:1,MI:0,OF:7,P:16,UTL:10},
+    size:{C:{h:71,w:182.9},CI:{h:77,w:230},MI:{h:null,w:null},OF:{h:71,w:180},P:{h:71.6,w:180.9},UTL:{h:71.5,w:179.5}},
+    coach:{name:"Joe Heller",title:"Head Coach",email:null,coachUrl:"https://elmhurstbluejays.com/sports/baseball/coaches"},
+    acad:{gpa:"3.59",act:"22–26",accept:"74%",level:"moderate"}
+  },
+  {
+    school:"North Park University", city:"Chicago, IL (Albany Park)", conf:"CCIW",
+    drive:45, url:"https://athletics.northpark.edu/sports/baseball/roster",
+    tags:["speed-first-offense","developing-offense","above-avg-height-staff","solid-strikeout-staff",
+          "hitter-friendly-ERA","balanced-pitching-mix","lefty-hitter-scarce","homegrown-roster",
+          "catcher-opportunity","crowded-middle-inf","crowded-outfield","large-roster"],
+    avg:.284, sb:81, hr:29, era:6.91, so:275, bb:140,
+    total:47, avgPHt:"6-1", p62:7, lhp:6, rhp:15, pitchers:21,
+    lhpPct:.286, leftyBat:.174, xfer:0,
+    pos:{C:2,CI:3,MI:8,OF:10,P:21,UTL:0},
+    size:{C:{h:74,w:205},CI:{h:71.7,w:205},MI:{h:70.5,w:175.6},OF:{h:69.5,w:176},P:{h:73,w:186.4},UTL:{h:null,w:null}},
+    coach:{name:"Luke Johnson",title:"Head Coach",email:null,coachUrl:"https://athletics.northpark.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.14",act:"19–23",accept:"73%",level:"accessible"}
+  },
+  {
+    school:"Concordia University Chicago", city:"River Forest, IL", conf:"NACC",
+    drive:30, url:"https://www.cucougars.com/sports/baseball/roster",
+    tags:["speed-first-offense","power-hitting","patient-lineup","shorter-pitching-staff",
+          "solid-strikeout-staff","elite-pitching","rhp-dominant-staff","lefty-hitter-scarce",
+          "homegrown-roster","crowded-corner-inf","small-roster-high-opportunity"],
+    avg:.318, sb:84, hr:40, era:4.32, so:265, bb:196,
+    total:38, avgPHt:"6-0", p62:5, lhp:3, rhp:14, pitchers:17,
+    lhpPct:.176, leftyBat:.143, xfer:0,
+    pos:{C:4,CI:5,MI:6,OF:6,P:17,UTL:0},
+    size:{C:{h:71.2,w:182},CI:{h:73.4,w:191},MI:{h:71.2,w:164.2},OF:{h:70.8,w:177.5},P:{h:72.4,w:177.4},UTL:{h:null,w:null}},
+    coach:{name:"Matt Smith",title:"Head Coach & Recruiting Coord.",email:"Matthew.Smith@cuchicago.edu",coachUrl:"https://www.cucougars.com/sports/baseball/coaches"},
+    acad:{gpa:"3.18",act:"20–25",accept:"93%",level:"accessible"}
+  },
+  {
+    school:"Dominican University", city:"River Forest, IL", conf:"NACC",
+    drive:30, url:"https://dustars.com/sports/baseball/roster",
+    tags:["balanced-speed","developing-offense","patient-lineup","shorter-pitching-staff",
+          "hitter-friendly-ERA","rhp-dominant-staff","homegrown-roster","crowded-catcher",
+          "crowded-corner-inf","crowded-middle-inf","outfield-opportunity"],
+    avg:.284, sb:52, hr:17, era:7.99, so:212, bb:195,
+    total:43, avgPHt:"6-0", p62:6, lhp:2, rhp:17, pitchers:19,
+    lhpPct:.105, leftyBat:null, xfer:0,
+    pos:{C:8,CI:6,MI:7,OF:4,P:19,UTL:0},
+    size:{C:{h:70.8,w:null},CI:{h:71.8,w:null},MI:{h:70.7,w:null},OF:{h:70.2,w:null},P:{h:72.3,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Steve Hardman",title:"Head Coach",email:"shardman@dom.edu",coachUrl:"https://dustars.com/sports/baseball/coaches"},
+    acad:{gpa:"3.74",act:"17–22",accept:"80%",level:"moderate"}
+  },
+  {
+    school:"Illinois Tech", city:"Chicago, IL (Bronzeville)", conf:"NACC",
+    drive:45, url:"https://illinoistechathletics.com/sports/baseball/roster",
+    tags:["speed-first-offense","developing-offense","above-avg-height-staff","solid-strikeout-staff",
+          "hitter-friendly-ERA","balanced-pitching-mix","homegrown-roster","crowded-outfield","academically-selective"],
+    avg:.270, sb:90, hr:20, era:9.70, so:241, bb:108,
+    total:39, avgPHt:"6-1", p62:8, lhp:3, rhp:11, pitchers:14,
+    lhpPct:.214, leftyBat:.32, xfer:0,
+    pos:{C:4,CI:4,MI:4,OF:9,P:14,UTL:4},
+    size:{C:{h:70.8,w:181.5},CI:{h:72.2,w:195},MI:{h:69.5,w:173.8},OF:{h:69.6,w:176.7},P:{h:72.6,w:200.4},UTL:{h:72.8,w:198.8}},
+    coach:{name:"Ed Zeifert",title:"Head Coach",email:"ezeifert@iit.edu",coachUrl:"https://illinoistechathletics.com/sports/baseball/coaches"},
+    acad:{gpa:"3.84",act:"25–31",accept:"55%",level:"selective"}
+  },
+  {
+    school:"Benedictine University", city:"Lisle, IL", conf:"NACC",
+    drive:10, url:"https://benueagles.com/sports/baseball/roster",
+    tags:["balanced-speed","power-hitting","patient-lineup","above-avg-height-staff","strikeout-staff",
+          "average-pitching","balanced-pitching-mix","homegrown-roster","crowded-catcher",
+          "corner-inf-opportunity","crowded-middle-inf","crowded-outfield","large-roster"],
+    avg:.309, sb:63, hr:42, era:6.31, so:322, bb:216,
+    total:46, avgPHt:"6-1", p62:5, lhp:3, rhp:12, pitchers:15,
+    lhpPct:.20, leftyBat:.276, xfer:0,
+    pos:{C:5,CI:0,MI:12,OF:8,P:15,UTL:5},
+    size:{C:{h:72.4,w:190},CI:{h:null,w:null},MI:{h:72.4,w:204.2},OF:{h:72,w:190},P:{h:72.3,w:198.7},UTL:{h:70,w:183}},
+    coach:{name:"Adam Smith",title:"Head Coach",email:null,coachUrl:"https://benueagles.com/sports/baseball/coaches"},
+    acad:{gpa:"3.26",act:"19–28",accept:"95%",level:"accessible"}
+  },
+  {
+    school:"Aurora University", city:"Aurora, IL", conf:"NACC",
+    drive:15, url:"https://athletics.aurora.edu/sports/baseball/roster/2025",
+    tags:["station-to-station","power-hitting","contact-hitting","average-pitching",
+          "strikeout-staff","balanced-pitching-mix","transfer-heavy-roster","crowded-catcher",
+          "corner-inf-opportunity","crowded-middle-inf"],
+    avg:.321, sb:33, hr:37, era:4.94, so:328, bb:173,
+    total:36, avgPHt:"6-0", p62:4, lhp:4, rhp:12, pitchers:16,
+    lhpPct:.267, leftyBat:.28, xfer:.293,
+    pos:{C:4,CI:0,MI:9,OF:6,P:16,UTL:1},
+    size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Adam Stevens",title:"Head Coach",email:"astevens@aurora.edu",coachUrl:"https://athletics.aurora.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.56",act:"20–26",accept:"81%",level:"moderate"}
+  },
+  {
+    school:"Rockford University", city:"Rockford, IL", conf:"NACC",
+    drive:70, url:"https://rockfordregents.com/sports/baseball/roster/2025",
+    tags:["speed-first-offense","power-hitting","patient-lineup","average-pitching",
+          "solid-strikeout-staff","balanced-pitching-mix","transfer-heavy-roster","large-roster",
+          "crowded-catcher","corner-inf-opportunity","crowded-middle-inf","crowded-outfield"],
+    avg:.308, sb:95, hr:45, era:5.63, so:253, bb:183,
+    total:54, avgPHt:"6-0", p62:7, lhp:7, rhp:18, pitchers:25,
+    lhpPct:.280, leftyBat:.258, xfer:.370,
+    pos:{C:6,CI:0,MI:18,OF:8,P:22,UTL:0},
+    size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Bob Koopmann",title:"Head Coach",email:"rkoopmann@rockford.edu",coachUrl:"https://rockfordregents.com/sports/baseball/coaches"},
+    acad:{gpa:"2.89–3.33",act:"17–23",accept:"57%",level:"moderate"}
+  },
+  {
+    school:"Edgewood College", city:"Madison, WI", conf:"NACC",
+    drive:150, url:"https://edgewoodeagles.com/sports/baseball/roster/2025",
+    tags:["speed-first-offense","contact-hitting","patient-lineup","hitter-friendly-ERA",
+          "solid-strikeout-staff","above-avg-height-staff","rhp-dominant-staff","lefty-hitter-rich",
+          "transfer-heavy-roster","crowded-catcher","corner-inf-opportunity","outfield-opportunity"],
+    avg:.302, sb:105, hr:19, era:6.47, so:275, bb:196,
+    total:32, avgPHt:"6-1", p62:4, lhp:2, rhp:12, pitchers:14,
+    lhpPct:.143, leftyBat:.333, xfer:.250,
+    pos:{C:4,CI:1,MI:7,OF:6,P:13,UTL:1},
+    size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Al Brisack",title:"Head Coach",email:"abrisack@edgewood.edu",coachUrl:"https://edgewoodeagles.com/sports/baseball/coaches"},
+    acad:{gpa:"3.0–3.4",act:"19–25",accept:"91%",level:"accessible"}
+  },
+  {
+    school:"Carthage College", city:"Kenosha, WI", conf:"CCIW",
+    drive:70, url:"https://athletics.carthage.edu/sports/baseball/roster/2025",
+    tags:["balanced-speed","contact-hitting","power-hitting","patient-lineup",
+          "average-pitching","strikeout-staff","above-avg-height-staff",
+          "balanced-pitching-mix","homegrown-roster","crowded-catcher",
+          "middle-inf-opportunity","outfield-opportunity"],
+    avg:.312, sb:51, hr:49, era:4.62, so:403, bb:183,
+    total:43, avgPHt:"6-2", p62:8, lhp:4, rhp:15, pitchers:19,
+    lhpPct:.211, leftyBat:.167, xfer:0,
+    pos:{C:5,CI:3,MI:2,OF:5,P:19,UTL:9},
+    size:{C:{h:72,w:207},CI:{h:74,w:215},MI:{h:76,w:204},OF:{h:73,w:189},P:{h:74,w:203},UTL:{h:71,w:183}},
+    coach:{name:"Augie Schmidt IV",title:"Head Coach",email:"aschmidt@carthage.edu",coachUrl:"https://athletics.carthage.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.30",act:"20–26",accept:"74%",level:"moderate"}
+  },
+  {
+    school:"Lakeland University", city:"Sheboygan, WI", conf:"NACC",
+    drive:100, url:"https://lakelandmuskies.com/sports/baseball/roster/2025",
+    tags:["station-to-station","hitter-friendly-ERA","rhp-dominant-staff",
+          "lefty-hitter-scarce","transfer-heavy-roster","crowded-catcher",
+          "crowded-corner-inf","middle-inf-opportunity"],
+    avg:.283, sb:26, hr:13, era:8.80, so:193, bb:133,
+    total:34, avgPHt:"6-0", p62:4, lhp:2, rhp:11, pitchers:13,
+    lhpPct:.154, leftyBat:.095, xfer:.265,
+    pos:{C:4,CI:5,MI:4,OF:6,P:13,UTL:2},
+    size:{C:{h:73,w:190},CI:{h:73,w:202},MI:{h:70,w:173},OF:{h:69,w:171},P:{h:72,w:192},UTL:{h:69,w:163}},
+    coach:{name:"Kevin Post",title:"Head Coach",email:"kpost@lakeland.edu",coachUrl:"https://lakelandmuskies.com/sports/baseball/coaches"},
+    acad:{gpa:"3.00",act:"17–22",accept:"91%",level:"accessible"}
+  },
+  {
+    school:"Augustana College", city:"Rock Island, IL", conf:"CCIW",
+    drive:120, url:"https://athletics.augustana.edu/sports/baseball/roster?view=2",
+    tags:["balanced-speed","patient-lineup","average-pitching","solid-strikeout-staff",
+          "rhp-dominant-staff","lefty-hitter-scarce","crowded-catcher",
+          "corner-inf-opportunity","middle-inf-opportunity","outfield-opportunity"],
+    avg:.274, sb:43, hr:14, era:4.88, so:287, bb:195,
+    total:37, avgPHt:"6-1", p62:9, lhp:3, rhp:15, pitchers:18,
+    lhpPct:.167, leftyBat:.053, xfer:.108,
+    pos:{C:5,CI:1,MI:2,OF:4,P:18,UTL:7},
+    size:{C:{h:72,w:197},CI:{h:74,w:220},MI:{h:71,w:173},OF:{h:71,w:184},P:{h:73,w:189},UTL:{h:72,w:187}},
+    coach:{name:"Greg Wallace",title:"Head Coach",email:"gwallace@augustana.edu",coachUrl:"https://athletics.augustana.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.60",act:"22–28",accept:"73%",level:"moderate"}
+  },
+  {
+    school:"Carroll University", city:"Waukesha, WI", conf:"CCIW",
+    drive:70, url:"https://gopios.com/sports/baseball/roster/2025",
+    tags:["developing-offense","balanced-speed","patient-lineup",
+          "hitter-friendly-ERA","solid-strikeout-staff",
+          "homegrown-roster","crowded-catcher"],
+    avg:.287, sb:59, hr:15, era:6.43, so:255, bb:184,
+    total:47, avgPHt:"6-0", p62:9, lhp:null, rhp:null, pitchers:22,
+    lhpPct:null, leftyBat:null, xfer:0,
+    pos:{C:6,CI:3,MI:4,OF:6,P:22,UTL:6},
+    size:{C:{h:72.5,w:199},CI:{h:74.0,w:223},MI:{h:69.5,w:175},OF:{h:71.7,w:188},P:{h:72.6,w:193},UTL:{h:73.2,w:214}},
+    coach:{name:"Stein Rear",title:"Head Baseball Coach",email:"srear@carrollu.edu",coachUrl:"https://gopios.com/sports/baseball/coaches"},
+    acad:{gpa:"2.85",act:"21–30",accept:"76%",level:"moderate"}
+  },
+  {
+    school:"Illinois Wesleyan University", city:"Bloomington, IL", conf:"CCIW",
+    drive:100, url:"https://www.iwusports.com/sports/baseball/roster",
+    tags:["balanced-speed","contact-hitting","patient-lineup",
+          "average-pitching","solid-strikeout-staff",
+          "above-avg-height-staff","balanced-pitching-mix",
+          "homegrown-roster","crowded-catcher",
+          "crowded-middle-inf","crowded-outfield"],
+    avg:.331, sb:61, hr:27, era:5.59, so:296, bb:203,
+    total:49, avgPHt:"6-2", p62:11, lhp:5, rhp:20, pitchers:25,
+    lhpPct:.200, leftyBat:.304, xfer:0,
+    pos:{C:5,CI:3,MI:6,OF:8,P:25,UTL:2},
+    size:{C:{h:72.2,w:null},CI:{h:73.0,w:null},MI:{h:70.2,w:null},OF:{h:72.0,w:null},P:{h:73.7,w:null},UTL:{h:75.0,w:null}},
+    coach:{name:"Michael Kellar",title:"Head Baseball Coach",email:"mkellar@iwu.edu",coachUrl:"https://www.iwusports.com/sports/baseball/coaches"},
+    acad:{gpa:"3.60",act:"23–29",accept:"68%",level:"moderate"}
+  },
+  {
+    school:"Millikin University", city:"Decatur, IL", conf:"CCIW",
+    drive:150, url:"https://athletics.millikin.edu/sports/baseball/roster",
+    tags:["speed-first-offense","average-pitching","strikeout-staff",
+          "above-avg-height-staff","balanced-pitching-mix","transfer-heavy-roster",
+          "crowded-corner-inf","crowded-outfield"],
+    avg:.296, sb:71, hr:14, era:4.99, so:319, bb:173,
+    total:43, avgPHt:"6-1", p62:8, lhp:4, rhp:16, pitchers:20,
+    lhpPct:.200, leftyBat:.209, xfer:.233,
+    pos:{C:3,CI:5,MI:4,OF:9,P:20,UTL:2},
+    size:{C:{h:72.0,w:188.3},CI:{h:76.0,w:220.0},MI:{h:69.5,w:162.5},OF:{h:71.4,w:183.9},P:{h:73.15,w:190.8},UTL:{h:72.0,w:185.0}},
+    coach:{name:"Brandon Townsend",title:"Head Baseball Coach",email:"btownsend@millikin.edu",coachUrl:"https://athletics.millikin.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.0–3.5",act:"19–24",accept:"73%",level:"moderate"}
+  },
+  {
+    school:"St. Norbert College", city:"De Pere, WI", conf:"MWC",
+    drive:170, url:"https://athletics.snc.edu/sports/baseball/roster",
+    tags:["balanced-speed","developing-offense","average-pitching",
+          "balanced-pitching-mix","homegrown-roster","large-roster",
+          "crowded-catcher","crowded-corner-inf","crowded-middle-inf","crowded-outfield"],
+    avg:.275, sb:39, hr:21, era:6.02, so:210, bb:124,
+    total:50, avgPHt:null, p62:null, lhp:3, rhp:9, pitchers:12,
+    lhpPct:.250, leftyBat:.211, xfer:0,
+    pos:{C:7,CI:8,MI:9,OF:9,P:12,UTL:5},
+    size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Mike Wallerich",title:"Head Baseball Coach",email:"mike.wallerich@snc.edu",coachUrl:"https://athletics.snc.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.57",act:"21–28",accept:"86%",level:"moderate"}
+  },
+  {
+    school:"University of Chicago", city:"Chicago, IL (Hyde Park)", conf:"UAA",
+    drive:35, url:"https://athletics.uchicago.edu/sports/baseball/roster",
+    tags:["speed-first-offense","contact-hitting","patient-lineup",
+          "average-pitching","strikeout-staff","above-avg-height-staff",
+          "rhp-dominant-staff","lefty-hitter-scarce","crowded-catcher",
+          "crowded-middle-inf","crowded-outfield","academically-selective"],
+    avg:.305, sb:103, hr:25, era:5.37, so:368, bb:195,
+    total:43, avgPHt:"6-1", p62:6, lhp:3, rhp:17, pitchers:20,
+    lhpPct:.150, leftyBat:.116, xfer:.070,
+    pos:{C:6,CI:3,MI:6,OF:7,P:20,UTL:1},
+    size:{C:{h:71.3,w:190.8},CI:{h:74.0,w:208.3},MI:{h:70.8,w:169.2},OF:{h:71.0,w:183.6},P:{h:73.2,w:193.8},UTL:{h:71.0,w:170.0}},
+    coach:{name:"Kevin Tyrrell",title:"Head Baseball Coach",email:"tyrrellk@uchicago.edu",coachUrl:"https://athletics.uchicago.edu/sports/baseball/coaches"},
+    acad:{gpa:"4.0",act:"34–36",accept:"4%",level:"selective"}
+  },
+  {
+    school:"Hope College", city:"Holland, MI", conf:"MIAA",
+    drive:180, url:"https://athletics.hope.edu/sports/baseball/roster",
+    tags:["balanced-speed","developing-offense","hitter-friendly-ERA",
+          "solid-strikeout-staff","above-avg-height-staff","rhp-dominant-staff",
+          "crowded-corner-inf","crowded-outfield"],
+    avg:.276, sb:54, hr:20, era:7.58, so:263, bb:149,
+    total:38, avgPHt:"6-2", p62:8, lhp:2, rhp:16, pitchers:18,
+    lhpPct:.111, leftyBat:.158, xfer:.079,
+    pos:{C:3,CI:7,MI:3,OF:7,P:18,UTL:0},
+    size:{C:{h:73.3,w:210.0},CI:{h:73.4,w:214.6},MI:{h:69.0,w:167.0},OF:{h:71.9,w:199.4},P:{h:74.1,w:197.9},UTL:{h:null,w:null}},
+    coach:{name:"Ryan Dorow",title:"Head Baseball Coach",email:"dorow@hope.edu",coachUrl:"https://athletics.hope.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.50",act:"25–31",accept:"79%",level:"moderate"}
+  }
+];
+
+// ── CROSS-SCHOOL SIZE BENCHMARKS (all 20 programs, April 2026) ────
+var BENCH = {
+  C:  {h:71.8, w:191.7},
+  CI: {h:73.4, w:208.8},
+  MI: {h:71.1, w:181.9},
+  OF: {h:71.0, w:183.3},
+  P:  {h:72.9, w:191.1},
+  UTL:{h:71.5, w:186.0}
+};
+
+// ── ACT LOWER-BOUND LOOKUP (25th-pct of mid-50% range, per school) ──
+var ACT_LO = {
+  "North Central College":23, "Wheaton College":27, "Elmhurst University":22,
+  "North Park University":19, "Concordia University Chicago":20, "Dominican University":17,
+  "Illinois Tech":25, "Benedictine University":19, "Aurora University":20,
+  "Rockford University":17, "Edgewood College":19, "Carthage College":20,
+  "Lakeland University":17, "Augustana College":22, "Carroll University":21,
+  "Illinois Wesleyan University":23, "Millikin University":19, "St. Norbert College":21,
+  "University of Chicago":34, "Hope College":25
+};
+// Representative ACT midpoint per player answer band
+var ACT_SCORE = {high:32, mid:27, standard:22, lower:17};
+
+// ── CAMPUS SETTING LOOKUP ─────────────────────────────────────────
+var SETTING = {
+  "North Central College":"suburb",    "Wheaton College":"suburb",
+  "Elmhurst University":"suburb",      "North Park University":"city",
+  "Concordia University Chicago":"suburb", "Dominican University":"suburb",
+  "Illinois Tech":"city",              "Benedictine University":"suburb",
+  "Aurora University":"suburb",        "Rockford University":"town",
+  "Edgewood College":"town",           "Carthage College":"town",
+  "Lakeland University":"town",        "Augustana College":"town",
+  "Carroll University":"town",         "Illinois Wesleyan University":"town",
+  "Millikin University":"town",        "St. Norbert College":"town",
+  "University of Chicago":"city",      "Hope College":"town"
+};
+
+// ── STEP DEFINITIONS ─────────────────────────────────────────────
+// Each step: { id, label, question, hint, key, options[], cols, skipFn }
+// Values are always plain strings or numbers — no embedded quotes.
+
+var STEPS = [
+  {
+    id:"position", key:"position", cols:2,
+    question:"What position do you play?",
+    hint:"Pick the one you plan to play in college.",
+    options:[
+      {val:"C",   label:"Catcher"},
+      {val:"CI",  label:"Corner Infield"},
+      {val:"MI",  label:"Middle Infield"},
+      {val:"OF",  label:"Outfield"},
+      {val:"P",   label:"Pitcher"},
+      {val:"UTL", label:"Multi-position"}
+    ]
+  },
+  {
+    id:"style", key:"style", cols:1,
+    question:null, hint:null,
+    options:null
+  },
+  {
+    id:"speed", key:"speed", cols:1,
+    question:"How would you describe your speed on the bases?",
+    hint:"Be honest — this shapes how schools match your playing style.",
+    skipFn: function(a){ return a.position === "P" || a.position === "C" || a.position === "CI"; },
+    options:[
+      {val:"very_fast",        label:"Very fast"},
+      {val:"average_speed",    label:"Average speed"},
+      {val:"not_a_baserunner", label:"Not a base-stealer"}
+    ]
+  },
+  {
+    id:"drive", key:"drive", cols:1,
+    question:"How far from Naperville are you willing to drive?",
+    hint:"NCC is right in Naperville. Edgewood (Madison) is the farthest at about 2h 30min.",
+    options:[
+      {val:"15",  label:"15 min or less"},
+      {val:"25",  label:"Up to 25 minutes"},
+      {val:"35",  label:"Up to 35 minutes"},
+      {val:"60",  label:"Up to 60 minutes"},
+      {val:"80",  label:"Up to 80 minutes"},
+      {val:"300", label:"Show all 20 schools"}
+    ]
+  },
+  {
+    id:"setting", key:"setting", cols:1,
+    question:"What kind of campus environment do you prefer?",
+    hint:"City schools are in Chicago proper. Suburbs are within the metro. Small city / college town covers everything farther out.",
+    options:[
+      {val:"city",   label:"City — in Chicago proper"},
+      {val:"suburb", label:"Suburb — Chicago metro area"},
+      {val:"town",   label:"Small city or college town"},
+      {val:"any",    label:"No preference"}
+    ]
+  },
+  {
+    id:"academic", key:"academic", cols:1,
+    question:"What's your current GPA?",
+    hint:"D3 programs range from open-admission to moderately selective. We'll flag your fit on each card.",
+    options:[
+      {val:"high",     label:"3.5 or above"},
+      {val:"mid",      label:"3.0 – 3.4"},
+      {val:"standard", label:"2.5 – 2.9"},
+      {val:"lower",    label:"Below 2.5"}
+    ]
+  },
+  {
+    id:"act", key:"act", cols:1,
+    question:"What's your ACT score (or closest range)?",
+    hint:"GPA and ACT together determine your academic fit — some schools weight the ACT heavily.",
+    options:[
+      {val:"high",     label:"30 or above"},
+      {val:"mid",      label:"25 – 29"},
+      {val:"standard", label:"20 – 24"},
+      {val:"lower",    label:"Below 20"}
+    ]
+  },
+  {
+    id:"priority", key:"priority", cols:1,
+    question:"What matters more to your college decision?",
+    hint:"Both matter — but knowing your priority helps us rank your results.",
+    options:[
+      {val:"academics", label:"Academics first"},
+      {val:"baseball",  label:"Baseball first"},
+      {val:"both",      label:"Both equally"}
+    ]
+  },
+];
+
+// Pitcher style options
+var PITCHER_OPTS = {
+  question:"What type of pitcher are you?",
+  hint:"Select your handedness and approach.",
+  options:[
+    {val:"lhp_strikeout", label:"LHP — strikeout"},
+    {val:"lhp_contact",   label:"LHP — contact / ground ball"},
+    {val:"rhp_strikeout", label:"RHP — strikeout"},
+    {val:"rhp_contact",   label:"RHP — contact / ground ball"}
+  ]
+};
+
+// Hitter style options
+var HITTER_OPTS = {
+  question:"How do you bat, and what is your hitting style?",
+  hint:"We use this to check handedness fit on each roster.",
+  options:[
+    {val:"L_power",   label:"Left-handed, power bat"},
+    {val:"L_contact", label:"Left-handed, contact / speed"},
+    {val:"R_power",   label:"Right-handed, power bat"},
+    {val:"R_contact", label:"Right-handed, contact"},
+    {val:"S_any",     label:"Switch hitter"}
+  ]
+};
+
+// ── STATE ────────────────────────────────────────────────────────
+var state = { stepIdx: 0, answers: {} };
+
+// ── MATCHING ─────────────────────────────────────────────────────
+function buildTags(a) {
+  var t = {};
+  function add(tag){ t[tag] = true; }
+
+  // Position depth tags (crowded-catcher excluded from scoring — shown as caution on cards only)
+  var posMap = {
+    C:  ["catcher-opportunity"],
+    CI: ["corner-inf-opportunity","crowded-corner-inf"],
+    MI: ["middle-inf-opportunity","crowded-middle-inf"],
+    OF: ["outfield-opportunity","crowded-outfield"],
+    UTL:["small-roster-high-opportunity"]
+  };
+  var posTags = posMap[a.position] || [];
+  for (var i=0; i<posTags.length; i++) add(posTags[i]);
+
+  // Style tags
+  var s = a.style || "";
+  // Pitcher styles — handedness
+  if (s.indexOf("lhp_") === 0) { add("lhp-heavy-staff"); add("balanced-pitching-mix"); }
+  if (s.indexOf("rhp_") === 0) { add("rhp-dominant-staff"); add("balanced-pitching-mix"); }
+  // Pitcher styles — approach
+  if (s === "lhp_strikeout" || s === "rhp_strikeout") { add("strikeout-staff"); add("solid-strikeout-staff"); }
+  if (s === "lhp_contact"   || s === "rhp_contact")   { add("elite-pitching"); add("average-pitching"); }
+  // Hitter styles
+  if (s.indexOf("L_") === 0 || s.indexOf("S_") === 0) add("lefty-hitter-scarce");
+  if (s.indexOf("_power") > -1) { add("power-hitting"); add("hitter-friendly-ERA"); }
+  if (s.indexOf("_contact") > -1 && s.indexOf("lhp_") !== 0 && s.indexOf("rhp_") !== 0) { add("contact-hitting"); add("patient-lineup"); }
+
+  // Speed tags
+  if (a.speed === "very_fast")        { add("speed-first-offense"); add("balanced-speed"); }
+  if (a.speed === "average_speed")    { add("balanced-speed"); add("station-to-station"); add("contact-hitting"); }
+  if (a.speed === "not_a_baserunner") { add("station-to-station"); add("power-hitting"); }
+
+  // Priority tags
+  if (a.priority === "academics") add("academically-selective");
+
+  return t;
+}
+
+function runMatch(a) {
+  var desired = buildTags(a);
+  var maxDrive = parseInt(a.drive, 10);
+  var out = [];
+  for (var i=0; i<SCHOOLS.length; i++) {
+    var s = SCHOOLS[i];
+    if (s.drive > maxDrive) continue;
+    if (a.setting && a.setting !== "any" && SETTING[s.school] !== a.setting) continue;
+    var matched = [];
+    for (var j=0; j<s.tags.length; j++) {
+      if (desired[s.tags[j]]) matched.push(s.tags[j]);
+    }
+    out.push({ school: s, score: matched.length, matched: matched });
+  }
+  out.sort(function(a,b){
+    if (b.score !== a.score) return b.score - a.score;
+    return a.school.era - b.school.era;
+  });
+  return out;
+}
+
+// ── RENDER HELPERS ───────────────────────────────────────────────
+var TAG_LABELS = {
+  "speed-first-offense":          "Speed-first offense",
+  "balanced-speed":               "Balanced running game",
+  "station-to-station":           "Station-to-station offense",
+  "power-hitting":                "Power-hitting lineup",
+  "contact-hitting":              "Contact-hitting team",
+  "developing-offense":           "Developing offense",
+  "patient-lineup":               "Patient, walk-heavy lineup",
+  "tall-pitching-staff":          "Tall pitching staff (avg 6'2\"+)",
+  "above-avg-height-staff":       "Above-avg pitcher height (6'1\")",
+  "shorter-pitching-staff":       "Shorter pitching staff",
+  "strikeout-staff":              "High-K pitching staff",
+  "solid-strikeout-staff":        "Solid strikeout numbers",
+  "elite-pitching":               "Elite team ERA (4.32)",
+  "average-pitching":             "Average team ERA",
+  "hitter-friendly-ERA":          "Hitter-friendly ERA",
+  "lhp-heavy-staff":              "LHP-heavy rotation (33%+)",
+  "rhp-dominant-staff":           "RHP-dominant staff",
+  "balanced-pitching-mix":        "Balanced LHP/RHP mix",
+  "lefty-hitter-scarce":          "Few lefty bats on roster",
+  "lefty-hitter-rich":            "Lefty-bat-heavy lineup",
+  "transfer-heavy-roster":        "Transfer-friendly culture (22%)",
+  "homegrown-roster":             "Homegrown roster (0% transfers)",
+  "crowded-catcher":              "Crowded at catcher (5+)",
+  "catcher-opportunity":          "Catcher opening (2 on roster)",
+  "crowded-corner-inf":           "Crowded corner infield",
+  "corner-inf-opportunity":       "Corner INF opening",
+  "crowded-middle-inf":           "Crowded middle infield",
+  "middle-inf-opportunity":       "Middle INF opening",
+  "crowded-outfield":             "Crowded outfield (8+)",
+  "outfield-opportunity":         "Outfield opening",
+  "large-roster":                 "Large roster (45+)",
+  "small-roster-high-opportunity":"Small roster, high PT opportunity",
+  "academically-selective":       "Selective academic profile"
+};
+
+function tl(tag) { return TAG_LABELS[tag] || tag; }
+
+function tagCls(tag) {
+  if (tag.indexOf("opportunity") > -1 || tag === "lefty-hitter-scarce" ||
+      tag === "elite-pitching" || tag === "homegrown-roster" || tag === "transfer-heavy-roster" ||
+      tag === "academically-selective")
+    return "tag-opportunity";
+  if (tag.indexOf("crowded") > -1 || tag === "hitter-friendly-ERA" || tag === "developing-offense")
+    return "tag-caution";
+  return "tag-info";
+}
+
+function pct(v) {
+  if (v === null || v === undefined) return "N/A";
+  return Math.round(v * 100) + "%";
+}
+
+function inFt(inches) {
+  if (inches === null || inches === undefined) return null;
+  var ft  = Math.floor(inches / 12);
+  var inc = Math.round(inches % 12 * 10) / 10;
+  return ft + "'" + (inc % 1 === 0 ? inc.toFixed(0) : inc.toFixed(1)) + '"';
+}
+
+// ── STEP LOGIC ───────────────────────────────────────────────────
+function getStep() { return STEPS[state.stepIdx]; }
+
+function resolveStep(step) {
+  // Inject dynamic options/question for style step
+  if (step.id === "style") {
+    var src = (state.answers.position === "P") ? PITCHER_OPTS : HITTER_OPTS;
+    return { id:step.id, key:step.key, cols:step.cols, label:step.label,
+             question:src.question, hint:src.hint, options:src.options };
+  }
+  return step;
+}
+
+function shouldSkip(step) {
+  return step.skipFn && step.skipFn(state.answers);
+}
+
+function totalVisible() {
+  var n = 0;
+  for (var i=0; i<STEPS.length; i++) if (!shouldSkip(STEPS[i])) n++;
+  return n;
+}
+
+function visibleIndex() {
+  var n = 0;
+  for (var i=0; i<state.stepIdx; i++) if (!shouldSkip(STEPS[i])) n++;
+  return n;
+}
+
+function advance() {
+  state.stepIdx++;
+  while (state.stepIdx < STEPS.length && shouldSkip(STEPS[state.stepIdx])) state.stepIdx++;
+}
+
+function retreat() {
+  state.stepIdx--;
+  while (state.stepIdx > 0 && shouldSkip(STEPS[state.stepIdx])) state.stepIdx--;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  if (state.stepIdx >= STEPS.length) { showResults(); return; }
+
+  var rawStep = getStep();
+  if (shouldSkip(rawStep)) { advance(); render(); return; }
+
+  var step = resolveStep(rawStep);
+  var pct2 = ((visibleIndex() + 1) / (totalVisible() + 1)) * 100;
+  document.getElementById("pf").style.width = pct2 + "%";
+
+  var stepLabel = "Step " + (visibleIndex() + 1) + " of " + totalVisible();
+  var sel = state.answers[step.key];
+  var canNext = sel !== undefined && sel !== null;
+
+  var opts = "";
+  for (var i=0; i<step.options.length; i++) {
+    var o = step.options[i];
+    var isSel = (String(sel) === String(o.val));
+    // Use data-key and data-val attributes — no quoting issues in onclick
+    opts += "<button class='option-btn" + (isSel ? " selected" : "") + "' " +
+            "data-key='" + step.key + "' data-val='" + o.val + "' onclick='pick(this)'>" +
+            "<span class='label'>" + o.label + "</span></button>";
+  }
+
+  var backBtn = state.stepIdx > 0
+    ? "<button class='btn btn-back' onclick='goBack()'>&#8592; Back</button>"
+    : "";
+
+  var html = "<div class='step-card'>" +
+    "<div class='step-label'>" + stepLabel + "</div>" +
+    "<div class='step-question'>" + step.question + "</div>" +
+    "<div class='step-hint'>" + (step.hint || "") + "</div>" +
+    "<div class='options" + (step.cols === 2 ? " two-col" : "") + "'>" + opts + "</div>" +
+    "<div class='nav-row'>" + backBtn +
+    "<button class='btn btn-next' onclick='goNext()' " + (canNext ? "" : "disabled") + ">" +
+    (state.stepIdx < STEPS.length - 1 ? "Continue &#8594;" : "Find My Schools &#8594;") +
+    "</button></div></div>";
+
+  document.getElementById("app").innerHTML = html;
+}
+
+function pick(btn) {
+  var key = btn.getAttribute("data-key");
+  var val = btn.getAttribute("data-val");
+  state.answers[key] = val;
+  render();
+}
+
+function goNext() {
+  var step = getStep();
+  if (!state.answers[step.key] && state.answers[step.key] !== 0) return;
+  advance();
+  render();
+}
+
+function goBack() {
+  retreat();
+  render();
+}
+
+// ── SIZE CONTEXT ROW ─────────────────────────────────────────────
+function buildSizeRow(school, pos) {
+  if (!pos) return "";
+  var sz = school.size && school.size[pos];
+  var bk = BENCH[pos];
+  if (!sz || !bk) return "";
+
+  var parts = [];
+
+  if (sz.h !== null) {
+    var schoolHt = inFt(sz.h);
+    var benchHt  = inFt(bk.h);
+    var diff = sz.h - bk.h;
+    var diffStr = diff === 0 ? "avg" : (diff > 0 ? "+" : "") + diff.toFixed(1) + '"';
+    parts.push("<strong>" + schoolHt + "</strong> avg height <span class='size-vs'>(" + diffStr + " vs. 20-school avg " + benchHt + ")</span>");
+  }
+
+  if (sz.w !== null) {
+    var schoolWt = Math.round(sz.w) + " lbs";
+    var benchWt  = Math.round(bk.w) + " lbs";
+    var diffW = Math.round(sz.w - bk.w);
+    var diffWStr = diffW === 0 ? "avg" : (diffW > 0 ? "+" : "") + diffW + " lbs";
+    parts.push("<strong>" + schoolWt + "</strong> avg weight <span class='size-vs'>(" + diffWStr + " vs. " + benchWt + ")</span>");
+  }
+
+  if (parts.length === 0) return "";
+
+  var posLabel = {C:"Catchers",CI:"Corner INF",MI:"Middle INF",OF:"Outfielders",P:"Pitchers",UTL:"UTL players"}[pos] || pos;
+  return "<div class='size-row'>" + posLabel + " here: " + parts.join(" &middot; ") + "</div>";
+}
+
+// ── FIT NARRATIVE ────────────────────────────────────────────────
+function buildFitNarrative(s, result, answers, pos) {
+  var sentences = [];
+  var posLabels = {C:"catchers",CI:"corner infielders",MI:"middle infielders",OF:"outfielders",P:"pitchers",UTL:"utility players"};
+
+  // 1. Position depth / opportunity
+  if (pos === "P") {
+    var hand = (answers.style && answers.style.indexOf("lhp_") === 0) ? "LHP" : "RHP";
+    var handCount = (hand === "LHP") ? s.lhp : s.rhp;
+    var opp = (hand === "LHP" && s.lhpPct < 0.20) ? "Left-handers are scarce here — a real opportunity for a LHP." :
+              (hand === "LHP" && s.lhpPct > 0.35) ? "Already LHP-heavy — you'd compete for a spot in a crowded rotation." :
+              (hand === "RHP" && s.lhpPct > 0.30) ? "The staff leans left-handed, so a RHP could fill a need." :
+              "";
+    sentences.push("There are " + handCount + " " + hand + "s among " + s.pitchers + " total pitchers." +
+                   (opp ? " " + opp : ""));
+  } else {
+    var n = s.pos[pos] || 0;
+    var lbl = posLabels[pos] || pos;
+    if (n <= 2)      sentences.push("Only " + n + " " + lbl + " on the roster — that's a genuine opportunity for playing time.");
+    else if (n <= 5) sentences.push("There are " + n + " " + lbl + " on roster — competitive for a spot but not a wall of depth.");
+    else             sentences.push("Depth is significant at your position (" + n + " " + lbl + ") — you'd be competing hard to crack the lineup.");
+  }
+
+  // 2. Style / tag match quality
+  var score = result.score;
+  if (score >= 5)      sentences.push("Strong stylistic fit — " + score + " of your profile traits match what this program values.");
+  else if (score >= 3) sentences.push("Solid overlap on " + score + " key traits with this program's identity.");
+  else if (score >= 1) sentences.push(score + " trait" + (score > 1 ? "s" : "") + " align here — less of a natural fit, but worth exploring.");
+  else                 sentences.push("Limited overlap with your profile — consider this a reach if you're set on your style.");
+
+  // 3. Handedness fit for hitters
+  if (pos !== "P" && answers.style) {
+    var st = answers.style;
+    var isLefty = (st.indexOf("L_") === 0 || st.indexOf("S_") === 0);
+    if (isLefty && s.leftyBat !== null) {
+      if (s.leftyBat < 0.20) sentences.push("Left-handed bats are rare here (" + pct(s.leftyBat) + " of lineup) — you'd stand out.");
+      else if (s.leftyBat > 0.40) sentences.push("Lineups skew left-handed (" + pct(s.leftyBat) + ") — good fit for a lefty bat.");
+    }
+  }
+
+  // 3. Academic fit (flag meaningful gaps using GPA + ACT)
+  var actLo3  = ACT_LO[s.school];
+  var playerAct3 = ACT_SCORE[answers.act];
+  var actGap3 = (playerAct3 !== undefined && actLo3) ? actLo3 - playerAct3 : 0;
+
+  if (actLo3 >= 33) {
+    sentences.push("UChicago admits ACT " + s.acad.act + " (" + s.acad.accept + " acceptance rate) — a very high bar even for strong academic profiles.");
+  } else if (actGap3 >= 5) {
+    sentences.push("ACT gap worth noting — their typical admit scores " + s.acad.act + ".");
+  } else if (answers.academic) {
+    var acadLevel = s.acad.level;
+    var playerGpa = answers.academic;
+    if (acadLevel === "selective" && (playerGpa === "standard" || playerGpa === "lower")) {
+      sentences.push("Academic bar is higher here (avg GPA " + s.acad.gpa + ", ACT " + s.acad.act + ") — coach advocacy is often key to admission.");
+    } else if (acadLevel === "accessible" && playerGpa === "lower") {
+      sentences.push("Open admissions environment (" + s.acad.accept + " accept rate) — academics won't be a barrier here.");
+    }
+  }
+
+  return sentences.slice(0, 3).join(" ");
+}
+
+// ── ACADEMIC FIT NOTE ────────────────────────────────────────────
+function buildAcadFit(s, answers) {
+  var gpa = answers.academic;
+  var actKey = answers.act;
+  if (!gpa && !actKey) return "<em>Answer the GPA and ACT questions to see your academic fit here.</em>";
+
+  var actLo  = ACT_LO[s.school];
+  var playerAct = ACT_SCORE[actKey];
+  var actGap = (playerAct !== undefined && actLo) ? actLo - playerAct : 0;
+  var level  = s.acad.level;
+  var acadStr = s.acad.gpa + " GPA, ACT " + s.acad.act;
+
+  // University of Chicago: ACT 34–36 is in a league of its own
+  if (actLo >= 33) {
+    if (actKey === "high")
+      return "<strong>ACT likely below their range.</strong> UChicago\u2019s 25th-percentile ACT is 34 \u2014 a score of 30\u201332 still falls short of their typical admit. An exceptional academic profile and strong coach advocacy are both essential.";
+    return "<strong>Significant academic reach.</strong> UChicago admits at " + s.acad.accept + " with ACT " + s.acad.act + ". This would require an extraordinary recruitment case.";
+  }
+
+  if (level === "selective") {
+    if (actGap >= 5)
+      return "<strong>ACT gap is a concern.</strong> Their typical admit scores ACT " + s.acad.act + ". The gap is significant \u2014 early coach contact and a strong overall application are important.";
+    if (gpa === "high" && actGap <= 0)
+      return "<strong>Strong academic fit.</strong> GPA and ACT are both within their admitted range (" + acadStr + ").";
+    return "<strong>Borderline academic fit.</strong> Their typical profile is " + acadStr + ". Coach advocacy can make a real difference here.";
+  }
+
+  if (level === "moderate") {
+    if (actGap >= 5)
+      return "<strong>ACT may be below their typical range.</strong> Their admitted students generally score ACT " + s.acad.act + ". Worth raising with the coach early.";
+    if (gpa === "high" || gpa === "mid")
+      return "<strong>Comfortable academic fit.</strong> GPA and ACT align with their typical admitted student (" + acadStr + ").";
+    if (gpa === "standard")
+      return "<strong>Solid fit.</strong> You meet their standard (" + s.acad.gpa + " GPA). No major academic concerns here.";
+    return "<strong>May need support.</strong> Their avg is " + s.acad.gpa + " GPA \u2014 talk to the coach early about academic pathways.";
+  }
+
+  // accessible
+  if (gpa === "lower")
+    return "<strong>Accessible program.</strong> With a " + s.acad.accept + " acceptance rate, this school has an open admissions philosophy \u2014 academics are not a barrier.";
+  return "<strong>Comfortable academic fit.</strong> Broad acceptance (" + s.acad.accept + " rate) \u2014 you\u2019re well within their typical admitted range.";
+}
+
+// ── RESULTS ──────────────────────────────────────────────────────
+function showResults() {
+  document.getElementById("pf").style.width = "100%";
+  var results = runMatch(state.answers);
+  var pos = state.answers.position;
+  var topScore = results.length ? results[0].score : 0;
+
+  var cards = "";
+  for (var i=0; i<results.length; i++) {
+    var r = results[i];
+    var s = r.school;
+    var isTop = (i === 0 && r.score === topScore && r.score > 0);
+
+    // All tags — matched highlighted navy, unmatched dimmed
+    var matchedSet = {};
+    for (var j=0; j<r.matched.length; j++) matchedSet[r.matched[j]] = true;
+    var tagsHtml = "";
+    for (var j=0; j<s.tags.length; j++) {
+      var tag = s.tags[j];
+      var cls = matchedSet[tag] ? "tag-match" : "tag-dim";
+      tagsHtml += "<span class='tag " + cls + "'>" + tl(tag) + "</span>";
+    }
+    if (s.xfer > 0)
+      tagsHtml += "<span class='tag tag-opportunity'>" + pct(s.xfer) + " transfers</span>";
+
+    // Depth row — always show pitcher breakdown + hitter position breakdown
+    var pitcherChips =
+      "<div class='depth-chip'><strong>" + s.pitchers + "</strong> pitchers total</div>" +
+      "<div class='depth-chip'><strong>" + s.lhp + "</strong> LHP &middot; <strong>" + s.rhp + "</strong> RHP</div>";
+    var hposOrder = ["C","CI","MI","OF","UTL"];
+    var hparts = [];
+    for (var k=0; k<hposOrder.length; k++) {
+      var hp = hposOrder[k];
+      hparts.push("<strong>" + (s.pos[hp] || 0) + "</strong> " + hp);
+    }
+    var hitterChip = "<div class='depth-chip'>" + hparts.join(" &middot; ") + "</div>";
+    var depthHtml = pitcherChips + hitterChip;
+
+    cards += "<div class='school-card" + (isTop ? " top-match" : "") + "'>" +
+      (isTop ? "<div class='top-banner'>Best match</div>" : "") +
+      "<div class='school-card-header'>" +
+        "<div><div class='school-name'>" + s.school + "</div>" +
+        "<div class='school-meta'>" + s.city + " &middot; " + s.conf + "</div></div>" +
+        "<div class='match-score'><div class='num'>" + r.score + "</div><div class='lbl'>match pts</div></div>" +
+      "</div>" +
+      "<div class='school-stats'>" +
+        "<div class='stat-row'>" +
+          "<div class='stat-row-label'>Hitting</div>" +
+          "<div class='stat-cell'><div class='stat-val'>." + Math.round(s.avg * 1000) + "</div><div class='stat-lbl'>AVG</div></div>" +
+          "<div class='stat-cell'><div class='stat-val'>" + s.hr + "</div><div class='stat-lbl'>HR</div></div>" +
+          "<div class='stat-cell'><div class='stat-val'>" + s.sb + "</div><div class='stat-lbl'>SB</div></div>" +
+        "</div>" +
+        "<div class='stat-row'>" +
+          "<div class='stat-row-label'>Pitching</div>" +
+          "<div class='stat-cell'><div class='stat-val'>" + s.era.toFixed(2) + "</div><div class='stat-lbl'>ERA</div></div>" +
+          "<div class='stat-cell'><div class='stat-val'>" + s.so + "</div><div class='stat-lbl'>Staff K</div></div>" +
+          "<div class='stat-cell'><div class='stat-val'>" + s.bb + "</div><div class='stat-lbl'>Staff BB</div></div>" +
+        "</div>" +
+      "</div>" +
+      "<div class='fit-section'><div class='fit-label'>How do I fit?</div><div class='fit-text'>" + buildFitNarrative(s, r, state.answers, pos) + "</div></div>" +
+      "<details class='card-details'><summary>Academics</summary>" +
+        "<div class='acad-grid'>" +
+          "<div class='acad-cell'><div class='acad-val'>" + s.acad.gpa + "</div><div class='acad-lbl'>Avg GPA</div></div>" +
+          "<div class='acad-cell'><div class='acad-val'>" + s.acad.act + "</div><div class='acad-lbl'>ACT mid-50%</div></div>" +
+          "<div class='acad-cell'><div class='acad-val'>" + s.acad.accept + "</div><div class='acad-lbl'>Accept rate</div></div>" +
+        "</div>" +
+        "<div class='acad-fit'>" + buildAcadFit(s, state.answers) + "</div>" +
+      "</details>" +
+      "<details class='card-details'><summary>More details</summary>" +
+      buildSizeRow(s, pos) +
+      "<div class='school-tags'>" + tagsHtml + "</div>" +
+      "<div class='depth-row'>" + depthHtml + "</div>" +
+      "</details>" +
+      "<div class='coach-row'>" +
+        "<div class='coach-info'>" +
+          "<div class='coach-name'>" + s.coach.name + "</div>" +
+          "<div class='coach-sub'>" + s.coach.title + "</div>" +
+        "</div>" +
+        (s.coach.email
+          ? "<a href='mailto:" + s.coach.email + "' class='coach-contact'>Email coach &#8594;</a>"
+          : "<a href='" + s.coach.coachUrl + "' target='_blank' class='coach-contact'>Contact &#8594;</a>") +
+      "</div>" +
+      "<div class='school-footer'>" +
+        "<a href='" + s.url + "' target='_blank' class='roster-link'>View roster &#8594;</a>" +
+        "<span class='drive-badge'>" + s.drive + " min from Naperville</span>" +
+      "</div></div>";
+  }
+
+  var summary = buildSummary(state.answers);
+
+  document.getElementById("app").innerHTML =
+    "<div class='results-header'><h2>Your Matches</h2><p>" + summary + "</p></div>" +
+    cards +
+    "<div class='action-row'><button class='btn-restart' onclick='restart()'>Start over</button><button class='btn-share' onclick='copyLink(this)'>Share results</button></div>";
+}
+
+function buildSummary(a) {
+  var posL = {C:"Catcher",CI:"Corner INF",MI:"Middle INF",OF:"Outfield",P:"Pitcher",UTL:"Multi-pos"};
+  var spdL = {very_fast:"fast runner",average_speed:"avg speed",not_a_baserunner:"power bat"};
+  var styL = {lhp_strikeout:"LHP strikeout",lhp_contact:"LHP contact",
+              rhp_strikeout:"RHP strikeout",rhp_contact:"RHP contact",
+              L_power:"LH power",L_contact:"LH contact",R_power:"RH power",R_contact:"RH contact",S_any:"Switch"};
+  var parts = [];
+  if (a.position) parts.push(posL[a.position] || a.position);
+  if (a.style)    parts.push(styL[a.style] || a.style);
+  if (a.speed)    parts.push(spdL[a.speed] || a.speed);
+  if (a.drive)    parts.push(a.drive === "0" ? "city only" : "max " + a.drive + " min");
+  return parts.join(" &middot; ");
+}
+
+function restart() {
+  state = { stepIdx:0, answers:{} };
+  // Clear URL params without reloading
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  render();
+}
+
+// ── SHARE LINK ───────────────────────────────────────────────────
+function copyLink(btn) {
+  var a = state.answers;
+  var params = [];
+  var keys = ["position","style","speed","drive","setting","academic","act","priority"];
+  for (var i=0; i<keys.length; i++) {
+    if (a[keys[i]] !== undefined && a[keys[i]] !== null) {
+      params.push(encodeURIComponent(keys[i]) + "=" + encodeURIComponent(a[keys[i]]));
+    }
+  }
+  var url = window.location.pathname + (params.length ? "?" + params.join("&") : "");
+  var full = window.location.origin + url;
+
+  // Copy to clipboard
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(full).then(function() { flashShare(btn); });
+  } else {
+    // Fallback for browsers without clipboard API
+    var ta = document.createElement("textarea");
+    ta.value = full;
+    ta.style.position = "fixed"; ta.style.top = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch(e) {}
+    document.body.removeChild(ta);
+    flashShare(btn);
+  }
+}
+
+function flashShare(btn) {
+  btn.textContent = "Copied!";
+  btn.classList.add("copied");
+  setTimeout(function() {
+    btn.innerHTML = "Share results";
+    btn.classList.remove("copied");
+  }, 2200);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+// Check for shared link params
+(function() {
+  var search = window.location.search;
+  if (search && search.indexOf("position=") > -1) {
+    var pairs = search.slice(1).split("&");
+    var loaded = {};
+    for (var i=0; i<pairs.length; i++) {
+      var kv = pairs[i].split("=");
+      if (kv.length === 2) {
+        loaded[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
+      }
+    }
+    if (loaded.position) {
+      state.answers = loaded;
+      state.stepIdx = STEPS.length; // jump straight to results
+      showResults();
+      return;
+    }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
