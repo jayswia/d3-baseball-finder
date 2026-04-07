@@ -5,6 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chicago-Area D3 Baseball Finder</title>
 <style>
+  #pw-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #1a2744;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #pw-box {
+    background: #fff; border-radius: 14px; padding: 40px 36px;
+    width: 320px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,.35);
+  }
+  #pw-box h2 { font-size: 1.1rem; font-weight: 700; color: #1a2744; margin-bottom: 4px; }
+  #pw-box p  { font-size: .82rem; color: #9aa5b4; margin-bottom: 20px; }
+  #pw-input {
+    width: 100%; padding: 10px 14px; font-size: 1rem;
+    border: 2px solid #e4e8ed; border-radius: 8px; outline: none;
+    text-align: center; letter-spacing: 2px;
+    transition: border-color .2s;
+  }
+  #pw-input:focus { border-color: #1a2744; }
+  #pw-input.shake {
+    animation: shake .35s ease;
+    border-color: #c8102e;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+  #pw-error { font-size: .78rem; color: #c8102e; margin-top: 8px; min-height: 1em; }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --navy: #1a2744; --navy-light: #243360; --red: #c8102e;
@@ -115,6 +146,15 @@
   .acad-fit { padding: 4px 18px 12px; font-size: .8rem; color: var(--gray-600); line-height: 1.55; }
   .acad-fit strong { color: var(--navy); }
   .acad-fit em { color: var(--gray-400); }
+  /* Roster breakdown */
+  .class-table { width: 100%; border-collapse: collapse; margin: 6px 18px 10px; width: calc(100% - 36px); font-size: .78rem; }
+  .class-table th { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-400); padding: 4px 8px; text-align: center; border-bottom: 1px solid var(--gray-200); }
+  .class-table th:first-child { text-align: left; }
+  .class-table td { padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--gray-100); color: var(--gray-800); }
+  .class-table td:first-child { text-align: left; font-weight: 600; color: var(--navy); }
+  .class-table tr:last-child td { border-bottom: none; }
+  .class-table .sr-col { color: var(--red); font-weight: 700; }
+  .class-pending { padding: 8px 18px 12px; font-size: .78rem; color: var(--gray-400); font-style: italic; }
   .header-disclaimer { font-size: .75rem; color: rgba(255,255,255,.45); margin-top: 6px; line-height: 1.5; }
   /* ── MOBILE ── */
   @media (max-width: 600px) {
@@ -159,6 +199,37 @@
 </head>
 <body>
 
+<div id="pw-overlay">
+  <div id="pw-box">
+    <h2>D3 Baseball Finder</h2>
+    <p>Enter password to continue</p>
+    <input id="pw-input" type="password" placeholder="Password" autocomplete="off" />
+    <div id="pw-error"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var input = document.getElementById('pw-input');
+  var error = document.getElementById('pw-error');
+  var overlay = document.getElementById('pw-overlay');
+  function check() {
+    if (input.value === 'elite8') {
+      overlay.style.display = 'none';
+    } else {
+      error.textContent = 'Incorrect password.';
+      input.classList.remove('shake');
+      void input.offsetWidth; // reflow to restart animation
+      input.classList.add('shake');
+      input.value = '';
+      setTimeout(function(){ error.textContent = ''; }, 1500);
+    }
+  }
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') check(); });
+  document.addEventListener('DOMContentLoaded', function(){ input.focus(); });
+})();
+</script>
+
 <div class="header">
   <div class="badge">D3 Baseball</div>
   <h1>Chicago-Area School Finder</h1>
@@ -183,7 +254,8 @@ var SCHOOLS = [
     pos:{C:5,CI:0,MI:6,OF:6,P:20,UTL:3},
     size:{C:{h:71,w:189},CI:{h:null,w:null},MI:{h:72.2,w:185},OF:{h:72.3,w:191.7},P:{h:72.5,w:185.5},UTL:{h:68.7,w:168.3}},
     coach:{name:"Ed Mathey",title:"Head Coach",email:null,coachUrl:"https://northcentralcardinals.com/sports/baseball/coaches"},
-    acad:{gpa:"3.57",act:"23–27",accept:"57%",level:"moderate"}
+    acad:{gpa:"3.57",act:"23–27",accept:"57%",level:"moderate"},
+    posClass:{C:{FR:2,SO:3,JR:0,SR:0},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:1,SO:3,JR:2,SR:0},OF:{FR:0,SO:0,JR:3,SR:3},P:{FR:8,SO:4,JR:4,SR:4},UTL:{FR:0,SO:1,JR:2,SR:0}}
   },
   {
     school:"Wheaton College", city:"Wheaton, IL", conf:"CCIW",
@@ -197,7 +269,8 @@ var SCHOOLS = [
     pos:{C:4,CI:0,MI:14,OF:4,P:18,UTL:1},
     size:{C:{h:72,w:181.2},CI:{h:null,w:null},MI:{h:71.7,w:192},OF:{h:69,w:179.2},P:{h:73.2,w:188.2},UTL:{h:70,w:185}},
     coach:{name:"Matt Husted",title:"Head Coach",email:"matt.husted@wheaton.edu",coachUrl:"https://athletics.wheaton.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.73",act:"27–32",accept:"87%",level:"selective"}
+    acad:{gpa:"3.73",act:"27–32",accept:"87%",level:"selective"},
+    posClass:{C:{FR:1,SO:2,JR:1,SR:0},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:4,SO:6,JR:1,SR:3},OF:{FR:0,SO:3,JR:0,SR:1},P:{FR:6,SO:3,JR:4,SR:2},UTL:{FR:1,SO:0,JR:0,SR:0}}
   },
   {
     school:"Elmhurst University", city:"Elmhurst, IL", conf:"CCIW",
@@ -211,7 +284,8 @@ var SCHOOLS = [
     pos:{C:7,CI:1,MI:0,OF:7,P:16,UTL:10},
     size:{C:{h:71,w:182.9},CI:{h:77,w:230},MI:{h:null,w:null},OF:{h:71,w:180},P:{h:71.6,w:180.9},UTL:{h:71.5,w:179.5}},
     coach:{name:"Joe Heller",title:"Head Coach",email:null,coachUrl:"https://elmhurstbluejays.com/sports/baseball/coaches"},
-    acad:{gpa:"3.59",act:"22–26",accept:"74%",level:"moderate"}
+    acad:{gpa:"3.59",act:"22–26",accept:"74%",level:"moderate"},
+    posClass:{C:{FR:1,SO:3,JR:3,SR:0},CI:{FR:0,SO:0,JR:0,SR:1},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:1,SO:1,JR:3,SR:2},P:{FR:4,SO:4,JR:3,SR:5},UTL:{FR:3,SO:2,JR:2,SR:3}}
   },
   {
     school:"North Park University", city:"Chicago, IL (Albany Park)", conf:"CCIW",
@@ -225,7 +299,8 @@ var SCHOOLS = [
     pos:{C:2,CI:3,MI:8,OF:10,P:21,UTL:0},
     size:{C:{h:74,w:205},CI:{h:71.7,w:205},MI:{h:70.5,w:175.6},OF:{h:69.5,w:176},P:{h:73,w:186.4},UTL:{h:null,w:null}},
     coach:{name:"Luke Johnson",title:"Head Coach",email:null,coachUrl:"https://athletics.northpark.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.14",act:"19–23",accept:"73%",level:"accessible"}
+    acad:{gpa:"3.14",act:"19–23",accept:"73%",level:"accessible"},
+    posClass:{C:{FR:4,SO:0,JR:1,SR:0},CI:{FR:2,SO:2,JR:1,SR:0},MI:{FR:2,SO:2,JR:0,SR:2},OF:{FR:2,SO:2,JR:2,SR:3},P:{FR:5,SO:5,JR:5,SR:6},UTL:{FR:0,SO:3,JR:0,SR:1}}
   },
   {
     school:"Concordia University Chicago", city:"River Forest, IL", conf:"NACC",
@@ -239,7 +314,8 @@ var SCHOOLS = [
     pos:{C:4,CI:5,MI:6,OF:6,P:17,UTL:0},
     size:{C:{h:71.2,w:182},CI:{h:73.4,w:191},MI:{h:71.2,w:164.2},OF:{h:70.8,w:177.5},P:{h:72.4,w:177.4},UTL:{h:null,w:null}},
     coach:{name:"Matt Smith",title:"Head Coach & Recruiting Coord.",email:"Matthew.Smith@cuchicago.edu",coachUrl:"https://www.cucougars.com/sports/baseball/coaches"},
-    acad:{gpa:"3.18",act:"20–25",accept:"93%",level:"accessible"}
+    acad:{gpa:"3.18",act:"20–25",accept:"93%",level:"accessible"},
+    posClass:{C:{FR:1,SO:0,JR:1,SR:2},CI:{FR:0,SO:1,JR:2,SR:1},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:0,SO:1,JR:1,SR:2},P:{FR:3,SO:3,JR:3,SR:7},UTL:{FR:3,SO:4,JR:2,SR:1}}
   },
   {
     school:"Dominican University", city:"River Forest, IL", conf:"NACC",
@@ -253,7 +329,8 @@ var SCHOOLS = [
     pos:{C:8,CI:6,MI:7,OF:4,P:19,UTL:0},
     size:{C:{h:70.8,w:null},CI:{h:71.8,w:null},MI:{h:70.7,w:null},OF:{h:70.2,w:null},P:{h:72.3,w:null},UTL:{h:null,w:null}},
     coach:{name:"Steve Hardman",title:"Head Coach",email:"shardman@dom.edu",coachUrl:"https://dustars.com/sports/baseball/coaches"},
-    acad:{gpa:"3.74",act:"17–22",accept:"80%",level:"moderate"}
+    acad:{gpa:"3.74",act:"17–22",accept:"80%",level:"moderate"},
+    posClass:{C:{FR:5,SO:1,JR:1,SR:1},CI:{FR:1,SO:1,JR:0,SR:2},MI:{FR:4,SO:2,JR:1,SR:0},OF:{FR:0,SO:0,JR:1,SR:2},P:{FR:2,SO:4,JR:7,SR:5},UTL:{FR:2,SO:1,JR:0,SR:1}}
   },
   {
     school:"Illinois Tech", city:"Chicago, IL (Bronzeville)", conf:"NACC",
@@ -266,7 +343,8 @@ var SCHOOLS = [
     pos:{C:4,CI:4,MI:4,OF:9,P:14,UTL:4},
     size:{C:{h:70.8,w:181.5},CI:{h:72.2,w:195},MI:{h:69.5,w:173.8},OF:{h:69.6,w:176.7},P:{h:72.6,w:200.4},UTL:{h:72.8,w:198.8}},
     coach:{name:"Ed Zeifert",title:"Head Coach",email:"ezeifert@iit.edu",coachUrl:"https://illinoistechathletics.com/sports/baseball/coaches"},
-    acad:{gpa:"3.84",act:"25–31",accept:"55%",level:"selective"}
+    acad:{gpa:"3.84",act:"25–31",accept:"55%",level:"selective"},
+    posClass:{C:{FR:1,SO:1,JR:1,SR:1},CI:{FR:1,SO:2,JR:0,SR:0},MI:{FR:1,SO:0,JR:1,SR:0},OF:{FR:1,SO:3,JR:2,SR:3},P:{FR:2,SO:4,JR:0,SR:7},UTL:{FR:5,SO:0,JR:1,SR:2}}
   },
   {
     school:"Benedictine University", city:"Lisle, IL", conf:"NACC",
@@ -280,7 +358,8 @@ var SCHOOLS = [
     pos:{C:5,CI:0,MI:12,OF:8,P:15,UTL:5},
     size:{C:{h:72.4,w:190},CI:{h:null,w:null},MI:{h:72.4,w:204.2},OF:{h:72,w:190},P:{h:72.3,w:198.7},UTL:{h:70,w:183}},
     coach:{name:"Adam Smith",title:"Head Coach",email:null,coachUrl:"https://benueagles.com/sports/baseball/coaches"},
-    acad:{gpa:"3.26",act:"19–28",accept:"95%",level:"accessible"}
+    acad:{gpa:"3.26",act:"19–28",accept:"95%",level:"accessible"},
+    posClass:{C:{FR:2,SO:1,JR:0,SR:2},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:1,SO:1,JR:0,SR:2},OF:{FR:1,SO:1,JR:0,SR:4},P:{FR:8,SO:1,JR:2,SR:5},UTL:{FR:5,SO:3,JR:1,SR:7}}
   },
   {
     school:"Aurora University", city:"Aurora, IL", conf:"NACC",
@@ -294,7 +373,8 @@ var SCHOOLS = [
     pos:{C:4,CI:0,MI:9,OF:6,P:16,UTL:1},
     size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
     coach:{name:"Adam Stevens",title:"Head Coach",email:"astevens@aurora.edu",coachUrl:"https://athletics.aurora.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.56",act:"20–26",accept:"81%",level:"moderate"}
+    acad:{gpa:"3.56",act:"20–26",accept:"81%",level:"moderate"},
+    posClass:{C:{FR:2,SO:2,JR:0,SR:1},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:0,SO:1,JR:2,SR:2},P:{FR:6,SO:3,JR:5,SR:6},UTL:{FR:5,SO:3,JR:2,SR:1}}
   },
   {
     school:"Rockford University", city:"Rockford, IL", conf:"NACC",
@@ -308,7 +388,8 @@ var SCHOOLS = [
     pos:{C:6,CI:0,MI:18,OF:8,P:22,UTL:0},
     size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
     coach:{name:"Bob Koopmann",title:"Head Coach",email:"rkoopmann@rockford.edu",coachUrl:"https://rockfordregents.com/sports/baseball/coaches"},
-    acad:{gpa:"2.89–3.33",act:"17–23",accept:"57%",level:"moderate"}
+    acad:{gpa:"2.89–3.33",act:"17–23",accept:"57%",level:"moderate"},
+    posClass:{C:{FR:0,SO:1,JR:3,SR:1},CI:{FR:2,SO:1,JR:1,SR:2},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:3,SO:0,JR:2,SR:1},P:{FR:3,SO:8,JR:3,SR:5},UTL:{FR:2,SO:2,JR:2,SR:7}}
   },
   {
     school:"Edgewood College", city:"Madison, WI", conf:"NACC",
@@ -322,7 +403,8 @@ var SCHOOLS = [
     pos:{C:4,CI:1,MI:7,OF:6,P:13,UTL:1},
     size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
     coach:{name:"Al Brisack",title:"Head Coach",email:"abrisack@edgewood.edu",coachUrl:"https://edgewoodeagles.com/sports/baseball/coaches"},
-    acad:{gpa:"3.0–3.4",act:"19–25",accept:"91%",level:"accessible"}
+    acad:{gpa:"3.0–3.4",act:"19–25",accept:"91%",level:"accessible"},
+    posClass:{C:{FR:3,SO:2,JR:0,SR:0},CI:{FR:0,SO:0,JR:1,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:2,SO:1,JR:1,SR:3},P:{FR:5,SO:4,JR:0,SR:3},UTL:{FR:2,SO:3,JR:2,SR:3}}
   },
   {
     school:"Carthage College", city:"Kenosha, WI", conf:"CCIW",
@@ -337,7 +419,8 @@ var SCHOOLS = [
     pos:{C:5,CI:3,MI:2,OF:5,P:19,UTL:9},
     size:{C:{h:72,w:207},CI:{h:74,w:215},MI:{h:76,w:204},OF:{h:73,w:189},P:{h:74,w:203},UTL:{h:71,w:183}},
     coach:{name:"Augie Schmidt IV",title:"Head Coach",email:"aschmidt@carthage.edu",coachUrl:"https://athletics.carthage.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.30",act:"20–26",accept:"74%",level:"moderate"}
+    acad:{gpa:"3.30",act:"20–26",accept:"74%",level:"moderate"},
+    posClass:{C:{FR:0,SO:2,JR:0,SR:2},CI:{FR:1,SO:0,JR:0,SR:1},MI:{FR:2,SO:0,JR:0,SR:0},OF:{FR:0,SO:1,JR:2,SR:1},P:{FR:5,SO:4,JR:8,SR:2},UTL:{FR:3,SO:4,JR:1,SR:2}}
   },
   {
     school:"Lakeland University", city:"Sheboygan, WI", conf:"NACC",
@@ -351,7 +434,8 @@ var SCHOOLS = [
     pos:{C:4,CI:5,MI:4,OF:6,P:13,UTL:2},
     size:{C:{h:73,w:190},CI:{h:73,w:202},MI:{h:70,w:173},OF:{h:69,w:171},P:{h:72,w:192},UTL:{h:69,w:163}},
     coach:{name:"Kevin Post",title:"Head Coach",email:"kpost@lakeland.edu",coachUrl:"https://lakelandmuskies.com/sports/baseball/coaches"},
-    acad:{gpa:"3.00",act:"17–22",accept:"91%",level:"accessible"}
+    acad:{gpa:"3.00",act:"17–22",accept:"91%",level:"accessible"},
+    posClass:{C:{FR:1,SO:3,JR:1,SR:0},CI:{FR:2,SO:0,JR:0,SR:1},MI:{FR:0,SO:0,JR:1,SR:1},OF:{FR:1,SO:0,JR:1,SR:2},P:{FR:7,SO:2,JR:5,SR:3},UTL:{FR:4,SO:3,JR:6,SR:0}}
   },
   {
     school:"Augustana College", city:"Rock Island, IL", conf:"CCIW",
@@ -365,7 +449,8 @@ var SCHOOLS = [
     pos:{C:5,CI:1,MI:2,OF:4,P:18,UTL:7},
     size:{C:{h:72,w:197},CI:{h:74,w:220},MI:{h:71,w:173},OF:{h:71,w:184},P:{h:73,w:189},UTL:{h:72,w:187}},
     coach:{name:"Greg Wallace",title:"Head Coach",email:"gwallace@augustana.edu",coachUrl:"https://athletics.augustana.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.60",act:"22–28",accept:"73%",level:"moderate"}
+    acad:{gpa:"3.60",act:"22–28",accept:"73%",level:"moderate"},
+    posClass:{C:{FR:1,SO:2,JR:1,SR:1},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:1,SO:2,JR:1,SR:0},P:{FR:5,SO:3,JR:6,SR:3},UTL:{FR:6,SO:2,JR:3,SR:0}}
   },
   {
     school:"Carroll University", city:"Waukesha, WI", conf:"CCIW",
@@ -379,7 +464,8 @@ var SCHOOLS = [
     pos:{C:6,CI:3,MI:4,OF:6,P:22,UTL:6},
     size:{C:{h:72.5,w:199},CI:{h:74.0,w:223},MI:{h:69.5,w:175},OF:{h:71.7,w:188},P:{h:72.6,w:193},UTL:{h:73.2,w:214}},
     coach:{name:"Stein Rear",title:"Head Baseball Coach",email:"srear@carrollu.edu",coachUrl:"https://gopios.com/sports/baseball/coaches"},
-    acad:{gpa:"2.85",act:"21–30",accept:"76%",level:"moderate"}
+    acad:{gpa:"2.85",act:"21–30",accept:"76%",level:"moderate"},
+    posClass:{C:{FR:2,SO:1,JR:3,SR:1},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:1,SO:0,JR:1,SR:4},P:{FR:4,SO:3,JR:4,SR:4},UTL:{FR:4,SO:2,JR:3,SR:3}}
   },
   {
     school:"Illinois Wesleyan University", city:"Bloomington, IL", conf:"CCIW",
@@ -395,7 +481,8 @@ var SCHOOLS = [
     pos:{C:5,CI:3,MI:6,OF:8,P:25,UTL:2},
     size:{C:{h:72.2,w:null},CI:{h:73.0,w:null},MI:{h:70.2,w:null},OF:{h:72.0,w:null},P:{h:73.7,w:null},UTL:{h:75.0,w:null}},
     coach:{name:"Michael Kellar",title:"Head Baseball Coach",email:"mkellar@iwu.edu",coachUrl:"https://www.iwusports.com/sports/baseball/coaches"},
-    acad:{gpa:"3.60",act:"23–29",accept:"68%",level:"moderate"}
+    acad:{gpa:"3.60",act:"23–29",accept:"68%",level:"moderate"},
+    posClass:{C:{FR:3,SO:1,JR:2,SR:0},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:2,SO:4,JR:1,SR:0},P:{FR:5,SO:8,JR:4,SR:7},UTL:{FR:1,SO:6,JR:2,SR:3}}
   },
   {
     school:"Millikin University", city:"Decatur, IL", conf:"CCIW",
@@ -409,7 +496,8 @@ var SCHOOLS = [
     pos:{C:3,CI:5,MI:4,OF:9,P:20,UTL:2},
     size:{C:{h:72.0,w:188.3},CI:{h:76.0,w:220.0},MI:{h:69.5,w:162.5},OF:{h:71.4,w:183.9},P:{h:73.15,w:190.8},UTL:{h:72.0,w:185.0}},
     coach:{name:"Brandon Townsend",title:"Head Baseball Coach",email:"btownsend@millikin.edu",coachUrl:"https://athletics.millikin.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.0–3.5",act:"19–24",accept:"73%",level:"moderate"}
+    acad:{gpa:"3.0–3.5",act:"19–24",accept:"73%",level:"moderate"},
+    posClass:{C:{FR:1,SO:1,JR:1,SR:1},CI:{FR:0,SO:1,JR:0,SR:1},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:2,SO:4,JR:2,SR:2},P:{FR:4,SO:5,JR:6,SR:2},UTL:{FR:6,SO:6,JR:3,SR:0}}
   },
   {
     school:"St. Norbert College", city:"De Pere, WI", conf:"MWC",
@@ -423,7 +511,8 @@ var SCHOOLS = [
     pos:{C:7,CI:8,MI:9,OF:9,P:12,UTL:5},
     size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:null,w:null},UTL:{h:null,w:null}},
     coach:{name:"Mike Wallerich",title:"Head Baseball Coach",email:"mike.wallerich@snc.edu",coachUrl:"https://athletics.snc.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.57",act:"21–28",accept:"86%",level:"moderate"}
+    acad:{gpa:"3.57",act:"21–28",accept:"86%",level:"moderate"},
+    posClass:{C:{FR:2,SO:1,JR:3,SR:1},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:1,SO:4,JR:1,SR:0},P:{FR:5,SO:2,JR:3,SR:2},UTL:{FR:8,SO:8,JR:5,SR:4}}
   },
   {
     school:"University of Chicago", city:"Chicago, IL (Hyde Park)", conf:"UAA",
@@ -438,7 +527,8 @@ var SCHOOLS = [
     pos:{C:6,CI:3,MI:6,OF:7,P:20,UTL:1},
     size:{C:{h:71.3,w:190.8},CI:{h:74.0,w:208.3},MI:{h:70.8,w:169.2},OF:{h:71.0,w:183.6},P:{h:73.2,w:193.8},UTL:{h:71.0,w:170.0}},
     coach:{name:"Kevin Tyrrell",title:"Head Baseball Coach",email:"tyrrellk@uchicago.edu",coachUrl:"https://athletics.uchicago.edu/sports/baseball/coaches"},
-    acad:{gpa:"4.0",act:"34–36",accept:"4%",level:"selective"}
+    acad:{gpa:"4.0",act:"34–36",accept:"4%",level:"selective"},
+    posClass:{C:{FR:2,SO:3,JR:0,SR:1},CI:{FR:0,SO:1,JR:1,SR:0},MI:{FR:2,SO:1,JR:1,SR:0},OF:{FR:3,SO:2,JR:0,SR:1},P:{FR:5,SO:5,JR:5,SR:3},UTL:{FR:2,SO:1,JR:0,SR:4}}
   },
   {
     school:"Hope College", city:"Holland, MI", conf:"MIAA",
@@ -452,7 +542,8 @@ var SCHOOLS = [
     pos:{C:3,CI:7,MI:3,OF:7,P:18,UTL:0},
     size:{C:{h:73.3,w:210.0},CI:{h:73.4,w:214.6},MI:{h:69.0,w:167.0},OF:{h:71.9,w:199.4},P:{h:74.1,w:197.9},UTL:{h:null,w:null}},
     coach:{name:"Ryan Dorow",title:"Head Baseball Coach",email:"dorow@hope.edu",coachUrl:"https://athletics.hope.edu/sports/baseball/coaches"},
-    acad:{gpa:"3.50",act:"25–31",accept:"79%",level:"moderate"}
+    acad:{gpa:"3.50",act:"25–31",accept:"79%",level:"moderate"},
+    posClass:{C:{FR:1,SO:1,JR:0,SR:1},CI:{FR:0,SO:0,JR:1,SR:1},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:3,SO:1,JR:0,SR:3},P:{FR:7,SO:3,JR:3,SR:4},UTL:{FR:3,SO:6,JR:0,SR:0}}
   }
 ];
 
@@ -936,6 +1027,26 @@ function buildFitNarrative(s, result, answers, pos) {
   return sentences.slice(0, 3).join(" ");
 }
 
+// ── ROSTER BREAKDOWN (class year grid) ───────────────────────────
+function buildClassTable(s) {
+  var rows = ["C","CI","MI","OF","P","UTL"];
+  if (!s.posClass) {
+    return "<div class='class-pending'>Class year breakdown not yet collected for this program.</div>";
+  }
+  var html = "<table class='class-table'>" +
+    "<thead><tr><th>Pos</th><th>FR</th><th>SO</th><th>JR</th><th class='sr-col'>SR</th></tr></thead><tbody>";
+  for (var i = 0; i < rows.length; i++) {
+    var p = rows[i];
+    var d = s.posClass[p];
+    if (!d) continue;
+    var tot = (d.FR||0) + (d.SO||0) + (d.JR||0) + (d.SR||0);
+    if (tot === 0) continue;
+    html += "<tr><td>" + p + "</td><td>" + (d.FR||0) + "</td><td>" + (d.SO||0) + "</td><td>" + (d.JR||0) + "</td><td class='sr-col'>" + (d.SR||0) + "</td></tr>";
+  }
+  html += "</tbody></table>";
+  return html;
+}
+
 // ── ACADEMIC FIT NOTE ────────────────────────────────────────────
 function buildAcadFit(s, answers) {
   var gpa = answers.academic;
@@ -1047,10 +1158,13 @@ function showResults() {
         "</div>" +
         "<div class='acad-fit'>" + buildAcadFit(s, state.answers) + "</div>" +
       "</details>" +
-      "<details class='card-details'><summary>More details</summary>" +
+      "<details class='card-details'><summary>Program Profile</summary>" +
       buildSizeRow(s, pos) +
       "<div class='school-tags'>" + tagsHtml + "</div>" +
+      "</details>" +
+      "<details class='card-details'><summary>Roster Breakdown</summary>" +
       "<div class='depth-row'>" + depthHtml + "</div>" +
+      buildClassTable(s) +
       "</details>" +
       "<div class='coach-row'>" +
         "<div class='coach-info'>" +
