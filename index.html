@@ -661,6 +661,9 @@ function runMatch(a) {
     var s = SCHOOLS[i];
     if (s.drive > maxDrive) continue;
     if (a.setting && a.setting !== "any" && SETTING[s.school] !== a.setting) continue;
+    if (s.school === "University of Chicago") {
+      if (a.academic !== "high" || a.act !== "high") continue;
+    }
     if (a.act) {
       var actLo = ACT_LO[s.school];
       var playerAct = ACT_SCORE[a.act];
