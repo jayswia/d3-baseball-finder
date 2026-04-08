@@ -764,7 +764,13 @@ function runMatch(a) {
     for (var j=0; j<s.tags.length; j++) {
       if (desired[s.tags[j]]) matched.push(s.tags[j]);
     }
-    out.push({ school: s, score: matched.length, matched: matched });
+    var srAtPos = 0;
+    var posKey = a.position;
+    if (posKey && s.posClass && s.posClass[posKey]) {
+      srAtPos = s.posClass[posKey].SR || 0;
+      if (srAtPos >= 2) matched.push("sr-opening");
+    }
+    out.push({ school: s, score: matched.length, matched: matched, srAtPos: srAtPos });
   }
   out.sort(function(a,b){
     if (b.score !== a.score) return b.score - a.score;
@@ -807,7 +813,8 @@ var TAG_LABELS = {
   "outfield-opportunity":         "Outfield opening",
   "large-roster":                 "Large roster (45+)",
   "small-roster-high-opportunity":"Small roster, high PT opportunity",
-  "academically-selective":       "Selective academic profile"
+  "academically-selective":       "Selective academic profile",
+  "sr-opening":                   "Seniors graduating at your position"
 };
 
 function tl(tag) { return TAG_LABELS[tag] || tag; }
@@ -988,6 +995,16 @@ function buildFitNarrative(s, result, answers, pos) {
     else             sentences.push("Depth is significant at your position (" + n + " " + lbl + ") — you'd be competing hard to crack the lineup.");
   }
 
+  // 1.5. Graduation opening
+  if (s.posClass && s.posClass[pos]) {
+    var srGrad = s.posClass[pos].SR || 0;
+    if (srGrad >= 2) {
+      sentences.push(srGrad + " seniors at your position are graduating — roster spots should open up next year.");
+    } else if (srGrad === 0 && (s.pos[pos] || 0) >= 4) {
+      sentences.push("No seniors at your position graduating — the current depth returns fully intact.");
+    }
+  }
+
   // 2. Style / tag match quality
   var score = result.score;
   if (score >= 5)      sentences.push("Strong stylistic fit — " + score + " of your profile traits match what this program values.");
@@ -1114,6 +1131,8 @@ function showResults() {
     }
     if (s.xfer > 0)
       tagsHtml += "<span class='tag tag-opportunity'>" + pct(s.xfer) + " transfers</span>";
+    if (r.srAtPos >= 2)
+      tagsHtml += "<span class='tag tag-match'>" + r.srAtPos + " seniors at " + pos + " graduating</span>";
 
     // Depth row — always show pitcher breakdown + hitter position breakdown
     var pitcherChips =
