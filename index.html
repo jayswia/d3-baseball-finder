@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Chicago-Area D3 Baseball Finder
-  © 2026 Jay Swiatek. All rights reserved.
+  © 2026 Jay. All rights reserved.
   Unauthorized copying, redistribution, or republication of this file,
   via any medium, is strictly prohibited without prior written permission.
 -->
@@ -11,38 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chicago-Area D3 Baseball Finder</title>
 <style>
-  #pw-overlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: #1a2744;
-    display: flex; align-items: center; justify-content: center;
-  }
-  #pw-box {
-    background: #fff; border-radius: 14px; padding: 40px 36px;
-    width: 320px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,.35);
-  }
-  #pw-box h2 { font-size: 1.1rem; font-weight: 700; color: #1a2744; margin-bottom: 4px; }
-  #pw-box p  { font-size: .82rem; color: #9aa5b4; margin-bottom: 20px; }
-  #pw-input {
-    width: 100%; padding: 10px 14px; font-size: 1rem;
-    border: 2px solid #e4e8ed; border-radius: 8px; outline: none;
-    text-align: center; letter-spacing: 2px;
-    transition: border-color .2s;
-  }
-  #pw-input:focus { border-color: #1a2744; }
-  #pw-input.shake {
-    animation: shake .35s ease;
-    border-color: #c8102e;
-  }
-  @keyframes shake {
-    0%,100%{transform:translateX(0)}
-    20%{transform:translateX(-8px)}
-    40%{transform:translateX(8px)}
-    60%{transform:translateX(-5px)}
-    80%{transform:translateX(5px)}
-  }
-  #pw-error { font-size: .78rem; color: #c8102e; margin-top: 8px; min-height: 1em; }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --navy: #1a2744; --navy-light: #243360; --red: #c8102e;
     --gold: #f5a623; --gray-50: #f8f9fa; --gray-100: #f0f2f5;
@@ -205,43 +174,12 @@
 </head>
 <body>
 
-<div id="pw-overlay">
-  <div id="pw-box">
-    <h2>D3 Baseball Finder</h2>
-    <p>Enter password to continue</p>
-    <input id="pw-input" type="password" placeholder="Password" autocomplete="off" />
-    <div id="pw-error"></div>
-  </div>
-</div>
-
-<script>
-(function(){
-  var input = document.getElementById('pw-input');
-  var error = document.getElementById('pw-error');
-  var overlay = document.getElementById('pw-overlay');
-  function check() {
-    if (input.value === 'elite8') {
-      overlay.style.display = 'none';
-    } else {
-      error.textContent = 'Incorrect password.';
-      input.classList.remove('shake');
-      void input.offsetWidth; // reflow to restart animation
-      input.classList.add('shake');
-      input.value = '';
-      setTimeout(function(){ error.textContent = ''; }, 1500);
-    }
-  }
-  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') check(); });
-  document.addEventListener('DOMContentLoaded', function(){ input.focus(); });
-})();
-</script>
 
 <div class="header">
   <div class="badge">D3 Baseball</div>
   <h1>Chicago-Area School Finder</h1>
-  <p>20 D3 programs &middot; CCIW, NACC, MWC, UAA &amp; MIAA &middot; Naperville-based drives</p>
+  <p>23 D3 programs &middot; CCIW, NACC, MWC, UAA &amp; MIAA &middot; Naperville-based drives</p>
   <p class="header-disclaimer">Roster &amp; stats from 2025 season &middot; Academic data from public admissions records &middot; 0 at a position may indicate incomplete roster data &middot; Data current as of April 2026</p>
-  <p class="header-disclaimer">&copy; 2026 Jay &middot; All rights reserved</p>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="pf" style="width:0%"></div></div>
 <div class="container" id="app"></div>
@@ -551,17 +489,59 @@ var SCHOOLS = [
     coach:{name:"Ryan Dorow",title:"Head Baseball Coach",email:"dorow@hope.edu",coachUrl:"https://athletics.hope.edu/sports/baseball/coaches"},
     acad:{gpa:"3.50",act:"25–31",accept:"79%",level:"moderate"},
     posClass:{C:{FR:1,SO:1,JR:0,SR:1},CI:{FR:0,SO:0,JR:1,SR:1},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:3,SO:1,JR:0,SR:3},P:{FR:7,SO:3,JR:3,SR:4},UTL:{FR:3,SO:6,JR:0,SR:0}}
+  },
+  {
+    school:"Ripon College", city:"Ripon, WI", conf:"MWC",
+    drive:120, url:"https://riponredhawks.com/sports/baseball/roster",
+    tags:["speed-first-offense","contact-hitting","patient-lineup","hitter-friendly-ERA",
+          "balanced-pitching-mix","corner-inf-opportunity","middle-inf-opportunity","outfield-opportunity"],
+    avg:.310, sb:73, hr:18, era:6.63, so:228, bb:190,
+    total:41, avgPHt:"6-0", p62:5, lhp:5, rhp:11, pitchers:16,
+    lhpPct:.313, leftyBat:.240, xfer:.049,
+    pos:{C:3,CI:0,MI:0,OF:4,P:16,UTL:18},
+    size:{C:{h:71.3,w:181.7},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:70.3,w:170.0},P:{h:71.6,w:185.9},UTL:{h:70.8,w:185.0}},
+    coach:{name:"Eric Cruise",title:"Head Baseball Coach",email:"cruisee@ripon.edu",coachUrl:"https://riponredhawks.com/sports/baseball/coaches"},
+    acad:{gpa:"3.0–3.5",act:"21–26",accept:"84%",level:"moderate"},
+    posClass:{C:{FR:1,SO:1,JR:1,SR:0},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:1,SO:1,JR:1,SR:1},P:{FR:6,SO:4,JR:2,SR:4},UTL:{FR:8,SO:3,JR:2,SR:5}}
+  },
+  {
+    school:"Knox College", city:"Galesburg, IL", conf:"MWC",
+    drive:130, url:"https://prairiefire.knox.edu/sports/baseball/roster",
+    tags:["speed-first-offense","developing-offense","hitter-friendly-ERA","rhp-dominant-staff",
+          "corner-inf-opportunity","middle-inf-opportunity","outfield-opportunity","homegrown-roster"],
+    avg:.268, sb:72, hr:11, era:8.11, so:229, bb:155,
+    total:42, avgPHt:"5-11", p62:4, lhp:3, rhp:13, pitchers:16,
+    lhpPct:.188, leftyBat:.154, xfer:0,
+    pos:{C:3,CI:0,MI:0,OF:5,P:16,UTL:18},
+    size:{C:{h:null,w:null},CI:{h:null,w:null},MI:{h:null,w:null},OF:{h:null,w:null},P:{h:71.0,w:null},UTL:{h:null,w:null}},
+    coach:{name:"Drake Sykes",title:"Head Baseball Coach",email:"dsykes@knox.edu",coachUrl:"https://prairiefire.knox.edu/sports/baseball/coaches"},
+    acad:{gpa:"3.3–3.8",act:"21–32",accept:"71%",level:"moderate"},
+    posClass:{C:{FR:3,SO:0,JR:0,SR:0},CI:{FR:0,SO:0,JR:0,SR:0},MI:{FR:0,SO:0,JR:0,SR:0},OF:{FR:2,SO:0,JR:1,SR:2},P:{FR:3,SO:2,JR:5,SR:6},UTL:{FR:5,SO:4,JR:8,SR:1}}
+  },
+  {
+    school:"Monmouth College", city:"Monmouth, IL", conf:"MWC",
+    drive:120, url:"https://monmouthscots.com/sports/baseball/roster",
+    tags:["station-to-station","patient-lineup","hitter-friendly-ERA","rhp-dominant-staff",
+          "above-avg-height-staff","crowded-outfield","transfer-heavy-roster"],
+    avg:.299, sb:23, hr:23, era:8.04, so:233, bb:194,
+    total:42, avgPHt:"6-1", p62:5, lhp:3, rhp:15, pitchers:18,
+    lhpPct:.167, leftyBat:.167, xfer:.190,
+    pos:{C:3,CI:3,MI:5,OF:7,P:18,UTL:6},
+    size:{C:{h:71.0,w:183.3},CI:{h:73.0,w:198.3},MI:{h:71.6,w:171.0},OF:{h:69.6,w:177.9},P:{h:72.6,w:182.8},UTL:{h:71.5,w:203.3}},
+    coach:{name:"Alan Betourne",title:"Baseball Head Coach",email:"abetourne@monmouthcollege.edu",coachUrl:"https://monmouthscots.com/sports/baseball/coaches"},
+    acad:{gpa:"3.3–3.6",act:"20–27",accept:"91%",level:"accessible"},
+    posClass:{C:{FR:0,SO:3,JR:0,SR:0},CI:{FR:1,SO:2,JR:0,SR:0},MI:{FR:1,SO:2,JR:1,SR:1},OF:{FR:0,SO:1,JR:2,SR:4},P:{FR:5,SO:3,JR:7,SR:3},UTL:{FR:2,SO:1,JR:3,SR:0}}
   }
 ];
 
-// ── CROSS-SCHOOL SIZE BENCHMARKS (all 20 programs, April 2026) ────
+// ── CROSS-SCHOOL SIZE BENCHMARKS (all 23 programs, April 2026) ────
 var BENCH = {
-  C:  {h:71.8, w:191.7},
-  CI: {h:73.4, w:208.8},
-  MI: {h:71.1, w:181.9},
-  OF: {h:71.0, w:183.3},
-  P:  {h:72.9, w:191.1},
-  UTL:{h:71.5, w:186.0}
+  C:  {h:71.9, w:191.2},
+  CI: {h:73.6, w:210.2},
+  MI: {h:71.0, w:177.8},
+  OF: {h:70.8, w:182.4},
+  P:  {h:72.7, w:190.4},
+  UTL:{h:71.3, w:185.0}
 };
 
 // ── ACT LOWER-BOUND LOOKUP (25th-pct of mid-50% range, per school) ──
@@ -572,7 +552,8 @@ var ACT_LO = {
   "Rockford University":17, "Edgewood College":19, "Carthage College":20,
   "Lakeland University":17, "Augustana College":22, "Carroll University":21,
   "Illinois Wesleyan University":23, "Millikin University":19, "St. Norbert College":21,
-  "University of Chicago":34, "Hope College":25
+  "University of Chicago":34, "Hope College":25,
+  "Ripon College":21, "Knox College":21, "Monmouth College":20
 };
 // Representative ACT midpoint per player answer band
 var ACT_SCORE = {high:32, mid:27, standard:22, lower:17};
@@ -588,7 +569,9 @@ var SETTING = {
   "Lakeland University":"town",        "Augustana College":"town",
   "Carroll University":"town",         "Illinois Wesleyan University":"town",
   "Millikin University":"town",        "St. Norbert College":"town",
-  "University of Chicago":"city",      "Hope College":"town"
+  "University of Chicago":"city",      "Hope College":"town",
+  "Ripon College":"town",              "Knox College":"town",
+  "Monmouth College":"town"
 };
 
 // ── STEP DEFINITIONS ─────────────────────────────────────────────
@@ -635,7 +618,7 @@ var STEPS = [
       {val:"35",  label:"Up to 35 minutes"},
       {val:"60",  label:"Up to 60 minutes"},
       {val:"80",  label:"Up to 80 minutes"},
-      {val:"300", label:"Show all 20 schools"}
+      {val:"300", label:"Show all 23 schools"}
     ]
   },
   {
@@ -1307,5 +1290,10 @@ function flashShare(btn) {
   render();
 })();
 </script>
+
+<footer style="text-align:center;padding:28px 16px 20px;font-size:.78rem;color:#888;border-top:1px solid #e8e8e8;margin-top:32px;">
+  &copy; 2026 Jay &middot; All rights reserved &middot; Unauthorized copying or redistribution is prohibited
+</footer>
+
 </body>
 </html>
